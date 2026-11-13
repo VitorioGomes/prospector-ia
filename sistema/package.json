@@ -1,0 +1,25 @@
+{
+  "name": "prospeccao",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "buscar": "node src/buscar.mjs",
+    "mensagens": "node src/mensagens.mjs",
+    "marcar": "node src/marcar.mjs",
+    "listas": "node src/listas.mjs",
+    "tela": "node src/tela.mjs",
+    "conectar": "node src/conectar.mjs",
+    "enviar": "node src/enviar.mjs",
+    "situacao": "node src/situacao.mjs",
+    "teste": "node --test"
+  },
+  "dependencies": {
+    "baileys": "^7.0.0-rc14",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}

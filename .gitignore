@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Os seus dados: leads, sessao do WhatsApp, registro de envios e a sua oferta.
+# Nada disto volta para o repositorio.
+sistema/dados/
+sistema/prospeccao/perfil.json

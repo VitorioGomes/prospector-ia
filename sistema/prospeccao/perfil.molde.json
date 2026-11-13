@@ -1,0 +1,12 @@
+{
+  "seuNome": "",
+  "oQueVoceVende": "",
+  "paraQuem": "",
+  "problemaQueResolve": "",
+  "prova": "",
+  "objetivoDaConversa": "",
+  "cidade": "",
+  "limitePorDia": 20,
+  "intervaloSegundos": 60,
+  "intervaloMaximoSegundos": 120
+}
