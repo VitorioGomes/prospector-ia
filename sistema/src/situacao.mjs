@@ -23,7 +23,7 @@ for (const lista of listas) {
     .map(([chave, nome]) => [nome.toLowerCase(), dela.filter((n) => n.situacao === chave).length])
     .filter(([, quantos]) => quantos)
     .map(([nome, quantos]) => `${quantos} ${nome}`);
-  console.log(`  "${lista.nome}": ${dela.length} leads${partes.length ? ` (${partes.join(", ")})` : ""}`);
+  console.log(`  "${lista.nome}": ${dela.length} ${dela.length === 1 ? "lead" : "leads"}${partes.length ? ` (${partes.join(", ")})` : ""}`);
 }
 
 console.log("\nEnvio pelo sistema");

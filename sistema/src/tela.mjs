@@ -14,6 +14,8 @@ await rodar(async () => {
   if (process.argv[2] === "fechar") {
     if ((await situacaoDaTela()) !== "ligada") return "A tela já estava fechada.";
     await mandar("/api/fechar");
+    // Espera ela sair de verdade: abrir logo em seguida encontraria a antiga ainda de pe.
+    for (let i = 0; i < 25 && (await situacaoDaTela()) !== "desligada"; i++) await new Promise((r) => setTimeout(r, 200));
     return "Tela fechada. O número continua conectado: é só abrir a tela de novo.";
   }
   await garantirTela();

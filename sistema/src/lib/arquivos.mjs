@@ -14,6 +14,8 @@ export const caminhos = {
   listas: path.join(PASTA_DADOS, "listas.json"),
   mensagens: path.join(PASTA_DADOS, "mensagens.json"),
   envios: path.join(PASTA_DADOS, "envios.json"),
+  campanhas: path.join(PASTA_DADOS, "campanhas.json"),
+  arquivos: path.join(PASTA_DADOS, "arquivos"),
   sessao: path.join(PASTA_DADOS, "whatsapp"),
 };
 

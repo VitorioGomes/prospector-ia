@@ -1,5 +1,5 @@
 /**
- * Conecta o chip da prospeccao ao WhatsApp. E o unico passo que precisa da tela: o QR Code
+ * Conecta o numero ao WhatsApp. E o unico passo que precisa da tela: o QR Code
  * aparece nela, e a pessoa le com o celular.
  *
  *   npm run conectar            mostra o QR Code e espera a leitura (ou diz que ja esta conectado)
@@ -24,7 +24,7 @@ await rodar(async () => {
   if (conexao.fase === "conectado") return `O número ${mostrar(conexao.numero)} já está conectado.`;
 
   if (conexao.fase === "desligado") await mandar("/api/conexao/ligar");
-  abrirNoNavegador("#envio");
+  abrirNoNavegador("#conexao");
   console.log("\nAbri a tela no navegador: o QR Code aparece nela. Esperando a leitura...");
 
   const limite = Date.now() + ESPERA_MAXIMA_MS;

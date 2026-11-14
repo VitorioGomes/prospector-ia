@@ -80,6 +80,62 @@ export function guardarMensagem(negocios, negocio, texto) {
   return null;
 }
 
+/** Quem pode receber a mensagem unica: tem telefone, ainda nao recebeu e nao foi tirado. */
+export const recebeMensagemUnica = (negocio) =>
+  Boolean(negocio.telefone) && ["novo", "pronto", "falhou"].includes(negocio.situacao ?? "novo");
+
+/** "{nome}" vira o nome do negocio. E o unico campo que existe. */
+export const montarMensagemUnica = (texto, negocio) => String(texto).replace(/\{nome\}/gi, negocio.nome ?? "").trim();
+
+/** O que impede esta mensagem unica de ir para este negocio, como a pessoa le, ou null. */
+export function problemaDaMensagemUnica(texto, negocio) {
+  if (typeof texto !== "string" || !texto.trim()) return "Escreva a mensagem antes.";
+  if (/\{[^{}]*\}/.test(texto.replace(/\{nome\}/gi, ""))) {
+    return "A mensagem tem um campo que eu não conheço. O único que vale é {nome}, que vira o nome do negócio.";
+  }
+  const problema = validarMensagem(montarMensagemUnica(texto, negocio));
+  return problema ? `A mensagem ${problema}.` : null;
+}
+
+/**
+ * A mesma mensagem para a lista inteira: e o disparo comum, que a pessoa escreve uma vez.
+ * Entra em quem ainda pode receber. Com soSemMensagem, quem ja tem mensagem propria fica
+ * como esta. Aqui a regra de "nao repetir texto" nao vale: repetir e o pedido.
+ * Devolve { erro } ou { guardadas, mantidas }.
+ */
+export function usarMensagemUnica(negocios, listaId, texto, { soSemMensagem = false } = {}) {
+  if (typeof texto !== "string" || !texto.trim()) return { erro: "Escreva a mensagem antes." };
+  const daLista = negocios.filter((o) => o.lista === listaId && recebeMensagemUnica(o));
+  if (daLista.length === 0) return { erro: "Essa lista não tem nenhum lead que ainda possa receber mensagem." };
+
+  const alvos = soSemMensagem ? daLista.filter((o) => !o.mensagem) : daLista;
+  if (alvos.length === 0) return { erro: "Todos os leads desta lista já têm mensagem." };
+
+  // O nome mais curto e o mais longo dizem se a mensagem cabe para todos.
+  const porTamanho = [...alvos].sort((a, b) => (a.nome ?? "").length - (b.nome ?? "").length);
+  for (const negocio of [porTamanho[0], porTamanho.at(-1)]) {
+    const problema = problemaDaMensagemUnica(texto, negocio);
+    if (problema) return { erro: problema };
+  }
+
+  for (const negocio of alvos) {
+    negocio.mensagem = montarMensagemUnica(texto, negocio);
+    if (negocio.situacao !== "pronto") {
+      negocio.situacao = "pronto";
+      delete negocio.erro;
+    }
+  }
+  return { guardadas: alvos.length, mantidas: daLista.length - alvos.length };
+}
+
+/** Le a lista, aplica a mensagem unica e grava. */
+export function aplicarMensagemUnica(listaId, texto, opcoes) {
+  const negocios = lerNegocios();
+  const resultado = usarMensagemUnica(negocios, listaId, texto, opcoes);
+  if (!resultado.erro) gravarNegocios(negocios);
+  return resultado;
+}
+
 const ACOES = {
   descartar: (negocio) => descartar(negocio),
   voltar: (negocio) => voltar(negocio),

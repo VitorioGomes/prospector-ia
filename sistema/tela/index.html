@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prospecção</title>
+<title>Prospector IA</title>
 <style>
   /* Painel da prospeccao. Barra lateral escura, fundo claro e frio, cartoes brancos sem
      borda, com sombra suave. Verde e a cor de acao, a mesma do CRM do atendente. Cada
@@ -192,7 +192,7 @@
   .dica.visivel { opacity: 1; }
 
   /* ---- Buscar: uma barra de busca, e nao um formulario ---- */
-  .procurador { display: flex; align-items: stretch; padding: 8px; gap: 0; border-radius: 22px; }
+  .procurador { display: flex; align-items: stretch; flex-wrap: wrap; padding: 8px; gap: 0; border-radius: 22px; }
   .trecho {
     position: relative; display: grid; align-content: center; gap: 2px; padding: 10px 18px 10px 52px; min-width: 0;
     border-radius: 16px; cursor: text;
@@ -203,9 +203,18 @@
   .trecho input { border: 0; background: none; padding: 0; height: 26px; min-width: 0; width: 100%; font-size: 15px; font-weight: 500; }
   .trecho input:focus { outline: none; }
   .trecho input::placeholder { color: var(--tinta-fraca); }
-  .trecho.oque { flex: 1 1 60%; }
-  .trecho.onde { flex: 0 1 260px; }
-  .trecho.onde::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: var(--linha); }
+  .trecho.oque { flex: 1 1 300px; }
+  .trecho.onde { flex: 0 1 230px; }
+  .trecho.quantos { flex: 0 0 132px; }
+  .trecho.guardar { flex: 0 1 230px; }
+  .trecho + .trecho::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: var(--linha); }
+  .trecho input[type="number"] { -moz-appearance: textfield; appearance: textfield; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .trecho input[type="number"]::-webkit-outer-spin-button, .trecho input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .trecho select {
+    border: 0; background: none; padding: 0; height: 26px; min-width: 0; width: 100%;
+    font: inherit; font-size: 15px; font-weight: 500; color: var(--tinta); cursor: pointer; text-overflow: ellipsis;
+  }
+  .trecho select:focus { outline: none; }
   .fichas { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .fichas input { flex: 1 1 140px; width: auto; }
   .ficha {
@@ -216,7 +225,6 @@
   .ficha button:hover { background: rgba(11, 92, 76, 0.14); }
   .procurador .botao { height: auto; min-height: 56px; padding: 0 28px; border-radius: 16px; font-size: 15px; align-self: stretch; }
 
-  .sob-busca { display: grid; gap: 12px; margin: 16px 4px 0; }
   .fileira-de-pilulas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--tinta-media); }
   .fileira-de-pilulas > span { font-weight: 600; margin-right: 2px; }
   .pilula {
@@ -299,6 +307,25 @@
   .frase input::-webkit-outer-spin-button, .frase input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .frase input:focus { outline: none; background: #fff; box-shadow: 0 0 0 3px var(--acao-suave), inset 0 0 0 1.5px var(--acao); }
   .explica-frase { display: block; color: var(--tinta-fraca); font-size: 12.5px; margin-bottom: 20px; max-width: 60ch; }
+  .explica-frase.sem-margem { margin: 14px 0 0; }
+
+  /* ---- Envio: a mensagem unica, escrita num balao de conversa ---- */
+  .campo-nome {
+    border: 0; border-radius: 8px; padding: 1px 8px; background: var(--acao-suave); color: var(--acao-texto);
+    font-weight: 700; font-size: 13.5px; cursor: pointer;
+  }
+  .campo-nome:hover { background: #d3ece5; }
+  .balao { max-width: 64ch; padding: 12px 14px 10px; background: #dff5e8; border-radius: 16px 16px 4px 16px; }
+  .balao:focus-within { box-shadow: 0 0 0 3px var(--acao-suave), inset 0 0 0 1.5px var(--acao); }
+  .balao textarea {
+    display: block; width: 100%; min-height: 76px; border: 0; padding: 0; background: none; resize: none; overflow: hidden;
+    font-size: 15px; line-height: 1.5;
+  }
+  .balao textarea:focus { outline: none; }
+  .balao textarea::placeholder { color: #4f7d69; }
+  .previa { margin: 10px 0 0; min-height: 20px; color: var(--tinta-media); font-size: 13.5px; }
+  .previa b { color: var(--tinta); font-weight: 600; }
+  .previa.erro { color: var(--vermelho-texto); }
   .tira { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 18px 24px; margin-top: 16px; }
   .tira-texto { flex: 1 1 280px; min-width: 0; color: var(--tinta-media); }
   .tira-texto b { display: block; color: var(--tinta); font-size: 15px; }
@@ -309,6 +336,197 @@
   .junto .botao { height: 40px; border-radius: 11px; }
   .tira .aviso-linha { flex-basis: 100%; }
   .tira .aviso-linha:empty { display: none; }
+
+  /* ---- Envio: a lista dos envios, o envio novo em etapas, e a conexao ---- */
+  .botao.alto { height: 44px; padding: 0 22px; font-size: 15px; }
+  .alavanca { display: inline-flex; gap: 2px; padding: 4px; border-radius: 12px; background: var(--fundo); }
+  .alavanca:empty { display: none; }
+  .alavanca button {
+    height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--tinta-media);
+    font-weight: 600; white-space: nowrap; cursor: pointer;
+  }
+  .alavanca button:hover { color: var(--tinta); }
+  .alavanca button.ativa { background: #fff; color: var(--tinta); box-shadow: 0 1px 2px rgba(12, 59, 53, 0.14); }
+
+  .etapas { list-style: none; display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 0; flex-wrap: wrap; }
+  .etapas li { display: flex; align-items: center; gap: 10px; color: var(--tinta-fraca); font-weight: 600; }
+  .etapas li + li::before { content: ""; width: 28px; height: 1px; background: var(--linha-forte); }
+  .etapas button { display: flex; align-items: center; gap: 9px; padding: 0; border: 0; background: none; color: inherit; font-weight: inherit; }
+  .etapas button[disabled] { cursor: default; }
+  .etapas .bola {
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: #dfe8e5; color: var(--tinta-media); font-size: 13.5px; font-weight: 700;
+  }
+  .etapas .etapa-atual { color: var(--tinta); }
+  .etapas .etapa-atual .bola { background: var(--noite); color: #fff; }
+  .etapas .etapa-feita { color: var(--acao-texto); }
+  .etapas .etapa-feita .bola { background: var(--acao-suave); color: var(--acao-texto); }
+  .etapas .etapa-feita button:hover { color: var(--tinta); }
+  .etapa { margin-top: 0; padding: 26px 28px 28px; min-height: 250px; }
+  .etapa h2 { font-size: 20px; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .etapa .frase { margin-top: 10px; }
+  .rodape-etapas { display: flex; align-items: center; gap: 12px 16px; margin-top: 16px; flex-wrap: wrap; }
+  .rodape-etapas .nota { flex: 1 1 240px; color: var(--tinta-media); text-align: right; }
+  .rodape-etapas .nota:first-child { text-align: left; }
+
+  .tipos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
+  .tipo {
+    display: grid; justify-items: center; gap: 8px; padding: 16px 8px 14px; border: 2px solid var(--linha); border-radius: 14px;
+    background: #fff; font-weight: 600; color: var(--tinta-media); cursor: pointer;
+  }
+  .tipo svg { width: 24px; height: 24px; }
+  .tipo:hover { border-color: var(--linha-forte); color: var(--tinta); }
+  .tipo.ativa { border-color: var(--acao); background: #f4fbf8; color: var(--acao-texto); }
+  #modo-envio { margin-bottom: 16px; }
+  #area-arquivo:not(:empty) { margin-bottom: 18px; }
+  .soltar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; max-width: 64ch; padding: 16px 18px;
+    border: 2px dashed var(--linha-forte); border-radius: 14px; color: var(--tinta-media);
+  }
+  .soltar.sobre { border-color: var(--acao); background: #f4fbf8; }
+  .arquivo-escolhido {
+    display: flex; align-items: center; gap: 14px; max-width: 64ch; padding: 12px 14px; border-radius: 14px; background: var(--fundo);
+  }
+  .arquivo-escolhido img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex: none; }
+  .arquivo-escolhido .icone { width: 44px; height: 44px; border-radius: 10px; background: #fff; display: grid; place-items: center; flex: none; color: var(--acao-texto); }
+  .arquivo-escolhido .icone svg { width: 22px; height: 22px; }
+  .arquivo-escolhido span { flex: 1; min-width: 0; }
+  .arquivo-escolhido b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .arquivo-escolhido small { color: var(--tinta-media); }
+  .estado-do-modo { margin: 0 0 6px; font-size: 17px; color: var(--tinta-media); }
+  .estado-do-modo b { color: var(--tinta); font-weight: 700; }
+  .modo-acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .bloco .explica q { color: var(--tinta); font-weight: 600; }
+  .bloco .explica.largo { max-width: 78ch; margin-bottom: 0; }
+
+  .conferencia { display: grid; }
+  .conferido { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-top: 1px solid var(--linha); }
+  .conferencia:first-of-type .conferido:first-child { border-top: 0; }
+  .conferido-nome { color: var(--tinta-media); font-weight: 600; }
+  .conferido b { font-weight: 700; }
+  .conferido small { display: block; color: var(--tinta-media); margin-top: 4px; }
+  .conferido .texto-enviado { margin: 10px 0 0; }
+  .quando-campos { margin-left: 12px; color: var(--tinta-media); white-space: nowrap; }
+  .quando-campos input {
+    height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--acao-suave); color: var(--acao-texto);
+    font-weight: 700; box-shadow: inset 0 -2px 0 var(--acao);
+  }
+  .quando-campos input:focus { outline: none; background: #fff; box-shadow: 0 0 0 3px var(--acao-suave), inset 0 0 0 1.5px var(--acao); }
+  .teste {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px 24px; flex-wrap: wrap;
+    margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--linha);
+  }
+  .teste .aviso-linha { flex-basis: 100%; }
+  .teste .aviso-linha:empty { display: none; }
+
+  #envios { padding-top: 10px; padding-bottom: 10px; }
+  .envio-linha { border-top: 1px solid var(--linha); }
+  .envio-linha:first-child { border-top: 0; }
+  .envio-linha > summary {
+    display: grid; grid-template-columns: 54px 40px minmax(0, 1fr) auto 118px; gap: 14px; align-items: center;
+    padding: 14px 4px; cursor: pointer; list-style: none; border-radius: 10px;
+  }
+  .envio-linha > summary::-webkit-details-marker { display: none; }
+  .envio-linha > summary:hover { background: #f7faf9; }
+  .envio-linha > summary:focus-visible { outline: 2px solid var(--acao); outline-offset: 2px; }
+  .envio-linha summary b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .envio-linha summary small { display: block; color: var(--tinta-media); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .envio-quando, .envio-conta { font-variant-numeric: tabular-nums; }
+  .envio-conta { text-align: right; }
+  .envio-linha summary .selo { justify-self: end; }
+  .envio-dentro { padding: 2px 4px 18px 112px; }
+  .envio-dentro .situacao-do-envio { margin: 0 0 10px; color: var(--tinta-media); max-width: 70ch; }
+  .envio-dentro .modo-acoes { margin: 0 0 14px; }
+  .texto-enviado {
+    max-width: 62ch; margin: 0 0 14px; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: #dff5e8;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .texto-enviado .anexo { display: block; font-weight: 600; color: var(--acao-texto); }
+  .texto-enviado .anexo + span:not(:empty) { display: block; margin-top: 6px; }
+  .quem-recebeu { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--linha); }
+  .quem-recebeu time { color: var(--tinta-media); font-variant-numeric: tabular-nums; font-size: 13px; }
+  .quem-recebeu b { font-weight: 600; }
+  .quem-recebeu small { display: block; color: var(--tinta-media); font-size: 12.5px; overflow-wrap: anywhere; }
+  .sem-envios { padding: 26px 0 22px; color: var(--tinta-media); max-width: 54ch; }
+  .sem-envios b { display: block; color: var(--tinta); font-size: 18px; margin-bottom: 4px; }
+  .sem-envios .botao { margin-top: 16px; }
+
+  /* A tela de conexao segue a do Atendente IA + CRM: desconectado, o QR Code numa caixa e o
+     passo a passo ao lado; conectado, o numero e o protagonista. */
+  .conexao-qr { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 32px; align-items: start; }
+  .qrcode { display: grid; place-items: center; min-height: 360px; padding: 20px; text-align: center; }
+  .qrcode img { width: 100%; max-width: 300px; image-rendering: pixelated; border-radius: var(--raio); }
+  .qr-legenda { margin: 10px 0 0; font-size: 12.5px; color: var(--tinta-fraca); }
+  .qr-vazio { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 260px; }
+  .qr-vazio p { margin: 0; color: var(--tinta-media); }
+  .conexao-instrucoes { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
+  .conexao-instrucoes h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .passos-qr { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; max-width: 52ch; color: var(--tinta-media); line-height: 1.5; }
+  .passos-qr strong { color: var(--tinta); }
+  .conexao-ativa { display: flex; flex-direction: column; gap: 14px; max-width: 920px; }
+  .cartao-numero { display: flex; align-items: center; gap: 22px; padding: 24px 26px; flex-wrap: wrap; }
+  .numero-foto { position: relative; flex: none; }
+  .numero-icone { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--acao-suave); color: var(--acao-texto); }
+  .numero-icone svg { width: 32px; height: 32px; }
+  .ponto-vivo { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--c-pronto); border: 3px solid #fff; }
+  .numero-dados { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; flex: 1; min-width: 0; }
+  .selo-conectado {
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; padding: 2px 9px 2px 8px; border-radius: 20px;
+    background: var(--acao-suave); color: var(--acao-texto); font-size: 12px; font-weight: 600;
+  }
+  .selo-conectado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--acao); }
+  .numero-telefone { white-space: nowrap; font-size: 28px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .atividade-conexao { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 18px 0; }
+  .atividade-conexao > div { display: flex; flex-direction: column; gap: 4px; padding: 0 26px; }
+  .atividade-conexao > div + div { border-left: 1px solid var(--linha); }
+  .atividade-conexao span { color: var(--tinta-media); font-size: 12.5px; }
+  .atividade-conexao strong { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .atividade-conexao strong.texto { font-size: 17px; line-height: 1.7; }
+
+  /* O ritmo: tres jeitos prontos, o ajuste fino com mais e menos, e a regua do envio. */
+  .ritmos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+  .ritmo { display: grid; gap: 2px; padding: 16px 18px; border: 2px solid var(--linha); border-radius: 14px; background: #fff; text-align: left; cursor: pointer; }
+  .ritmo:hover { border-color: var(--linha-forte); }
+  .ritmo.ativa { border-color: var(--acao); background: #f4fbf8; }
+  .ritmo b { font-size: 16px; font-weight: 700; }
+  .ritmo small { color: var(--tinta-media); font-size: 13px; }
+  .velocidade { display: flex; align-items: flex-end; gap: 3px; height: 18px; margin-bottom: 8px; }
+  .velocidade i { width: 5px; border-radius: 2px; background: var(--linha-forte); }
+  .velocidade i:nth-child(1) { height: 7px; }
+  .velocidade i:nth-child(2) { height: 12px; }
+  .velocidade i:nth-child(3) { height: 18px; }
+  .velocidade.v1 i:nth-child(-n + 1), .velocidade.v2 i:nth-child(-n + 2), .velocidade.v3 i { background: var(--acao); }
+  .medidas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 10px; margin-top: 10px; }
+  .medida { padding: 16px 18px; border-radius: 14px; background: var(--fundo); }
+  .medida-nome { display: block; margin-bottom: 10px; color: var(--tinta-media); font-weight: 600; font-size: 13px; }
+  .faixa-de-pausa { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--tinta-media); }
+  .conta-passo { display: inline-flex; align-items: center; height: 46px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(12, 59, 53, 0.08); }
+  .conta-passo button { width: 42px; height: 46px; border: 0; background: none; color: var(--acao-texto); font-size: 22px; font-weight: 600; line-height: 1; cursor: pointer; border-radius: 12px; }
+  .conta-passo button:hover { background: var(--acao-suave); }
+  .conta-passo input {
+    width: 3.4em; height: 46px; border: 0; background: none; text-align: center; font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield;
+  }
+  .conta-passo input::-webkit-outer-spin-button, .conta-passo input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .conta-passo input:focus { outline: none; }
+  .conta-passo:focus-within { box-shadow: 0 0 0 3px var(--acao-suave), inset 0 0 0 1.5px var(--acao); }
+  .regua { margin-top: 22px; }
+  .regua-trilho { position: relative; height: 14px; margin: 0 7px; }
+  .regua-trilho::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 2px; background: var(--linha-forte); }
+  .regua-trilho i { position: absolute; top: 0; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--acao); box-shadow: 0 0 0 3px #fff; }
+  .regua p { margin: 12px 0 0; color: var(--tinta-media); }
+  .regua p b { color: var(--tinta); font-weight: 700; }
+  @media (max-width: 820px) {
+    .tipos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .envio-linha > summary { grid-template-columns: 48px minmax(0, 1fr) auto; }
+    .envio-linha > summary .rosto, .envio-linha > summary .envio-conta { display: none; }
+    .envio-dentro { padding-left: 4px; }
+    .conferido { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .conexao-qr, .ritmos, .medidas { grid-template-columns: minmax(0, 1fr); }
+    .atividade-conexao > div { padding: 0 16px; }
+    .etapas li span.nome { display: none; }
+    .etapas .etapa-atual span.nome { display: inline; }
+  }
 
   /* ---- Cartoes das telas de busca e de envio ---- */
   .bloco { padding: 22px 24px; margin-top: 16px; }
@@ -451,12 +669,20 @@
   }
   .recado.visivel { opacity: 1; }
 
+  /* Janela media: a barra de busca vira duas linhas arrumadas. Em cima, o que buscar;
+     embaixo, onde, quantos, em qual lista, e o botao. */
+  @media (max-width: 1340px) {
+    .procurador { display: grid; grid-template-columns: minmax(0, 1.2fr) 132px minmax(0, 1fr) auto; }
+    .trecho.oque { grid-column: 1 / -1; margin-bottom: 6px; border-radius: 16px 16px 0 0; box-shadow: inset 0 -1px 0 var(--linha); }
+    .trecho.onde::before { display: none; }
+  }
   @media (max-width: 1020px) {
     .mosaico { grid-template-columns: 1fr; }
   }
   @media (max-width: 820px) {
     .casca { grid-template-columns: 1fr; }
-    .lateral { position: static; height: auto; flex-direction: row; align-items: center; padding: 8px 10px; overflow-x: auto; }
+    .lateral { position: static; height: auto; flex-direction: row; align-items: center; padding: 8px 10px; overflow-x: auto; scrollbar-width: none; }
+    .lateral::-webkit-scrollbar { display: none; }
     .marca { display: none; }
     .item { padding: 0 12px; height: 40px; }
     .item.ativo { box-shadow: none; }
@@ -466,9 +692,11 @@
     .agora { padding: 20px; }
     .agora h2 { font-size: 21px; }
     .grade, .aneis, .amostra, .feitas-cartoes { grid-template-columns: 1fr; }
-    .procurador { flex-direction: column; }
-    .trecho.onde { flex: 1 1 auto; }
-    .trecho.onde::before { left: 14px; right: 14px; top: 0; bottom: auto; width: auto; height: 1px; }
+    .procurador { display: flex; flex-direction: column; }
+    .trecho.oque { margin-bottom: 0; box-shadow: none; }
+    .trecho.onde::before { display: block; }
+    .trecho.onde, .trecho.quantos, .trecho.guardar { flex: 1 1 auto; }
+    .trecho + .trecho::before { left: 14px; right: 14px; top: 0; bottom: auto; width: auto; height: 1px; }
     .barra { grid-template-columns: 104px minmax(0, 1fr) 32px; gap: 10px; }
     .linha { grid-template-columns: 36px minmax(0, 1fr) auto; }
     .tel, .avaliacao { display: none; }
@@ -485,7 +713,7 @@
   <aside class="lateral">
     <div class="marca">
       <svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="13" cy="13" r="12" stroke="#6fe0c2" stroke-width="2"/><circle cx="13" cy="13" r="6.5" stroke="#6fe0c2" stroke-width="2"/><circle cx="13" cy="13" r="2" fill="#fff"/></svg>
-      Prospecção
+      Prospector IA
     </div>
     <a class="item" href="#painel" data-tela="painel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -502,6 +730,10 @@
     <a class="item" href="#envio" data-tela="envio">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
       Envio<span class="conta" id="conta-envio"></span>
+    </a>
+    <a class="item" href="#conexao" data-tela="conexao">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>
+      Conexão<span class="conta" id="conta-conexao"></span>
     </a>
   </aside>
 
@@ -554,7 +786,7 @@
 
     <section class="tela" id="tela-buscar">
       <div class="cabeca">
-        <div><h1>Que negócios você quer encontrar?</h1><p>Eles vêm do Google Maps, direto para a sua lista. Só entra quem tem telefone.</p></div>
+        <div><h1>Buscar contatos</h1></div>
       </div>
       <form class="cartao procurador" id="form-busca">
         <label class="trecho oque">
@@ -567,60 +799,138 @@
           <span class="trecho-nome">Onde</span>
           <input id="busca-cidade" placeholder="Sobral, CE" autocomplete="off" aria-label="Cidade, com o estado">
         </label>
+        <label class="trecho quantos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          <span class="trecho-nome">Quantos</span>
+          <input id="busca-quantos" type="number" min="1" max="200" step="1" inputmode="numeric" aria-label="Quantos leads você quer">
+        </label>
+        <label class="trecho guardar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          <span class="trecho-nome">Guardar em</span>
+          <select id="busca-lista" aria-label="Em qual lista guardar"></select>
+        </label>
         <button type="submit" class="botao primario" id="botao-busca">Buscar</button>
       </form>
-      <div class="sob-busca">
-        <div class="fileira-de-pilulas" id="ideias"></div>
-        <div class="fileira-de-pilulas" id="destino"></div>
-      </div>
       <div class="cartao andando" id="andamento-busca"></div>
       <div class="cartao achados" id="resultado-busca"></div>
       <div id="bloco-feitas" hidden>
-        <h2 class="secao">Buscas que você já fez</h2>
+        <h2 class="secao">Buscas anteriores</h2>
         <div class="feitas-cartoes" id="feitas"></div>
       </div>
     </section>
 
     <section class="tela" id="tela-envio">
-      <div class="cabeca">
-        <div><h1>Envio</h1><p>As mensagens prontas saem pelo sistema, uma por vez, e nunca duas vezes para o mesmo número.</p></div>
-      </div>
-      <div class="cartao bloco">
-        <h2>Para qual lista</h2>
-        <div class="escolhas" id="lista-envio"></div>
-      </div>
-      <div class="cartao bloco">
-        <div id="envio"></div>
-        <p class="frase">Sair até
-          <input id="por-dia" data-ritmo type="number" min="1" step="1" inputmode="numeric" aria-label="Mensagens por dia">
-          mensagens por dia, esperando
-          <span class="junta">de
-          <input id="pausa-min" data-ritmo type="number" min="0" step="1" inputmode="numeric" aria-label="Pausa mínima, em segundos">
-          a
-          <input id="pausa-max" data-ritmo type="number" min="0" step="1" inputmode="numeric" aria-label="Pausa máxima, em segundos">
-          segundos</span>
-          entre uma e outra.</p>
-        <small class="explica-frase" id="explica-pausa"></small>
-        <div id="envio-acao"></div>
-      </div>
-      <form class="cartao tira" id="form-teste">
-        <div class="tira-texto"><b>Veja antes como chega</b>A primeira mensagem da lista vai para o seu número. Nada é registrado, e o negócio não recebe.</div>
-        <div class="junto">
-          <input id="numero-teste" inputmode="tel" placeholder="Seu número, com DDD" autocomplete="off" aria-label="Seu número, com DDD">
-          <button type="submit" class="botao primario" id="botao-teste">Mandar teste</button>
+      <div id="envios-lista">
+        <div class="cabeca">
+          <div><h1>Envio</h1></div>
+          <button class="botao primario alto" data-acao="novo-envio">Novo envio</button>
         </div>
-        <p id="resultado-teste" class="aviso-linha"></p>
-      </form>
-      <div class="cartao tira">
-        <div class="tira-texto" id="texto-numero"></div>
-        <div id="estado-numero"></div>
+        <div id="envio-agora"></div>
+        <div class="cartao bloco" id="envios"></div>
       </div>
+
+      <div id="envio-novo" hidden>
+        <div class="cabeca">
+          <div><h1>Novo envio</h1></div>
+          <button class="elo" data-acao="sair-do-novo">Cancelar</button>
+        </div>
+        <ol class="etapas" id="etapas"></ol>
+
+        <div class="cartao bloco etapa" id="etapa-1">
+          <h2>Para qual lista</h2>
+          <div class="escolhas" id="lista-envio"></div>
+        </div>
+
+        <div class="cartao bloco etapa" id="etapa-2" hidden>
+          <h2>O que vai ser enviado</h2>
+          <div class="tipos" id="tipos"></div>
+          <div class="alavanca" id="modo-envio"></div>
+          <div id="area-arquivo"></div>
+          <input type="file" id="arquivo" hidden>
+          <div id="modo-cada"></div>
+          <div id="modo-mesma">
+            <p class="explica" id="explica-unica"></p>
+            <div class="balao">
+              <textarea id="unica" rows="3" aria-label="Mensagem para a lista toda"></textarea>
+            </div>
+            <p class="previa" id="unica-previa"></p>
+          </div>
+          <small class="explica-frase sem-margem" id="aviso-do-tipo"></small>
+        </div>
+
+        <div class="cartao bloco etapa" id="etapa-3" hidden>
+          <h2>Em que ritmo</h2>
+          <div class="ritmos" id="ritmos"></div>
+          <div class="medidas">
+            <div class="medida">
+              <span class="medida-nome">Mensagens por dia</span>
+              <div class="conta-passo">
+                <button type="button" data-acao="ritmo-passo" data-campo="por-dia" data-passo="-5" aria-label="Menos mensagens por dia">−</button>
+                <input id="por-dia" data-ritmo type="number" min="1" step="1" inputmode="numeric" aria-label="Mensagens por dia">
+                <button type="button" data-acao="ritmo-passo" data-campo="por-dia" data-passo="5" aria-label="Mais mensagens por dia">+</button>
+              </div>
+            </div>
+            <div class="medida">
+              <span class="medida-nome">Pausa entre uma e outra, em segundos</span>
+              <div class="faixa-de-pausa">
+                <span>de</span>
+                <div class="conta-passo">
+                  <button type="button" data-acao="ritmo-passo" data-campo="pausa-min" data-passo="-10" aria-label="Diminuir a pausa mínima">−</button>
+                  <input id="pausa-min" data-ritmo type="number" min="0" step="1" inputmode="numeric" aria-label="Pausa mínima, em segundos">
+                  <button type="button" data-acao="ritmo-passo" data-campo="pausa-min" data-passo="10" aria-label="Aumentar a pausa mínima">+</button>
+                </div>
+                <span>a</span>
+                <div class="conta-passo">
+                  <button type="button" data-acao="ritmo-passo" data-campo="pausa-max" data-passo="-10" aria-label="Diminuir a pausa máxima">−</button>
+                  <input id="pausa-max" data-ritmo type="number" min="0" step="1" inputmode="numeric" aria-label="Pausa máxima, em segundos">
+                  <button type="button" data-acao="ritmo-passo" data-campo="pausa-max" data-passo="10" aria-label="Aumentar a pausa máxima">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="regua" id="regua"></div>
+        </div>
+
+        <div class="cartao bloco etapa" id="etapa-4" hidden>
+          <h2>Confira e envie</h2>
+          <div class="conferencia" id="conferencia"></div>
+          <div class="conferencia">
+            <div class="conferido">
+              <span class="conferido-nome">Quando</span>
+              <div>
+                <div class="alavanca" id="quando"></div>
+                <span class="quando-campos" id="quando-campos" hidden>
+                  <input type="date" id="quando-dia" aria-label="Dia do envio"> às
+                  <input type="time" id="quando-hora" aria-label="Hora de começo">
+                </span>
+                <small class="explica-frase sem-margem" id="explica-quando"></small>
+              </div>
+            </div>
+          </div>
+          <form class="teste" id="form-teste">
+            <div class="tira-texto"><b>Veja antes como chega</b>Mande um teste para o seu número.</div>
+            <div class="junto">
+              <input id="numero-teste" inputmode="tel" placeholder="Seu número, com DDD" autocomplete="off" aria-label="Seu número, com DDD">
+              <button type="submit" class="botao" id="botao-teste">Mandar teste</button>
+            </div>
+            <p id="resultado-teste" class="aviso-linha"></p>
+          </form>
+        </div>
+
+        <div class="rodape-etapas" id="rodape-etapas"></div>
+      </div>
+    </section>
+
+    <section class="tela" id="tela-conexao">
+      <div class="cabeca">
+        <div><h1>Conexão com o WhatsApp</h1></div>
+      </div>
+      <div id="conexao"></div>
     </section>
   </main>
   </div>
 </div>
 
-<dialog id="janela-numero"><div class="janela" id="janela-numero-dentro"></div></dialog>
 <dialog id="janela-nome">
   <form class="janela" id="form-nome">
     <h3 id="titulo-nome"></h3>
@@ -635,7 +945,7 @@
 <div class="dica" id="dica" role="tooltip"></div>
 
 <script>
-const TELAS = ["painel", "leads", "buscar", "envio"];
+const TELAS = ["painel", "leads", "buscar", "envio", "conexao"];
 const ABAS = [
   ["todos", "Todos"],
   ["novo", "Sem mensagem"],
@@ -658,15 +968,11 @@ let aberto = null;
 const rascunhos = {};
 let desenhoDaLista = "";
 let avisoDaConexaoVisto = "";
-let janelaNumeroPedida = false;
 let faseVista = null;
 let ritmoMostrado = "";
 let buscaPedidaAqui = false;
-/** Qual lista a tela de leads mostra ("todas" ou o id) e para qual a de envio manda. */
+/** Qual lista a tela de leads mostra ("todas" ou o id). */
 let listaVista = lembrado("listaVista") ?? "todas";
-let listaEnvio = lembrado("listaEnvio");
-/** Enquanto a pessoa nao escolhe, a tela de envio aponta para a lista que tem mensagem pronta. */
-let envioEscolhido = Boolean(listaEnvio);
 /** Numeros dos leads marcados na tela de leads. */
 const marcados = new Set();
 
@@ -820,9 +1126,6 @@ async function atualizar(forcar = false) {
 function desenhar(forcar) {
   // Lista escolhida que nao existe mais (apagada, ou dados novos) volta ao padrao.
   if (listaVista !== "todas" && !dados.listas.some((l) => l.id === listaVista)) listaVista = "todas";
-  if (!dados.listas.some((l) => l.id === listaEnvio) || (!envioEscolhido && !dados.envio.rodando && !dados.filaPorLista[listaEnvio])) {
-    listaEnvio = (dados.listas.find((l) => dados.filaPorLista[l.id] > 0) ?? dados.listas[0])?.id ?? null;
-  }
   for (const n of [...marcados]) if (!dados.negocios.some((o) => o.n === n)) marcados.delete(n);
 
   desenharLateral();
@@ -833,7 +1136,7 @@ function desenhar(forcar) {
   desenharBusca();
   desenharEnvio();
   desenharRitmo();
-  desenharJanelaNumero();
+  desenharConexao();
 
   const aviso = dados.conexao.aviso;
   if (aviso && aviso !== avisoDaConexaoVisto) recado(aviso);
@@ -862,62 +1165,12 @@ function desenharLateral() {
   por(
     $("numero"),
     fase === "conectado"
-      ? `<button class="numero" data-acao="janela-numero" title="Número conectado"><span class="bolinha"></span>${mostrado}</button>`
+      ? `<button class="numero" data-acao="ir-conexao" title="Número conectado"><span class="bolinha"></span>${mostrado}</button>`
       : fase === "desligado"
-        ? `<button class="numero chamar" data-acao="janela-numero">Conectar número</button>`
-        : `<button class="numero" data-acao="janela-numero">Conectando…</button>`,
+        ? `<button class="numero chamar" data-acao="ir-conexao">Conectar número</button>`
+        : `<button class="numero" data-acao="ir-conexao">Conectando…</button>`,
   );
-  por(
-    $("texto-numero"),
-    fase === "conectado"
-      ? `<b>Número ${mostrado}</b>As mensagens saem dele, e as respostas chegam no WhatsApp desse celular.`
-      : fase === "desligado"
-        ? `<b>Nenhum número conectado</b>${esc(aviso) || "Use um chip separado, só para prospectar."}`
-        : `<b>Conectando…</b>Leia o QR Code com o celular do chip.`,
-  );
-  por(
-    $("estado-numero"),
-    fase === "conectado"
-      ? `<button class="botao perigo" data-acao="sair">Desconectar</button>`
-      : fase === "desligado"
-        ? `<button class="botao primario" data-acao="janela-numero">Conectar número</button>`
-        : `<button class="botao" data-acao="janela-numero">Ver o QR Code</button>`,
-  );
-}
-
-function desenharJanelaNumero() {
-  const janela = $("janela-numero");
-  const { fase, qr, numero } = dados.conexao;
-  // O QR Code aparece sozinho quando surge, venha o pedido de um clique aqui ou de um
-  // comando da IA (npm run conectar). Quem fechou a janela nao a ve abrir de novo.
-  if (fase === "qr" && (janelaNumeroPedida || faseVista !== "qr") && !janela.open) janela.showModal();
-  faseVista = fase;
-  if (!janela.open) return;
-
-  let html;
-  if (fase === "conectado") {
-    html = `<h3>Número conectado</h3>
-      <p>As mensagens saem do número <b>${esc(telefone(numero) || numero)}</b>. As respostas chegam no WhatsApp desse celular, e quem responde é você.</p>
-      <div class="acoes"><button class="botao perigo" data-acao="sair">Desconectar número</button>
-      <button class="botao primario" data-acao="fechar-janela">Fechar</button></div>`;
-  } else if (fase === "qr" && qr) {
-    html = `<h3>Leia o QR Code com o celular</h3>
-      <img src="${qr}" alt="QR Code para conectar o WhatsApp">
-      <ol><li>Abra o WhatsApp no celular do chip da prospecção.</li>
-      <li>Toque em Configurações, depois em Aparelhos conectados.</li>
-      <li>Toque em Conectar aparelho e aponte para esta tela.</li></ol>
-      <div class="acoes"><button class="botao" data-acao="fechar-janela">Fechar</button></div>`;
-  } else if (fase === "desligado") {
-    html = `<h3>Conectar o número da prospecção</h3>
-      <p class="destaque">Use um chip separado, só para prospectar. Nem o seu pessoal, nem o do atendimento.</p>
-      <p>Número novo mandando mensagem para quem não conhece pode ser bloqueado pelo WhatsApp. Com um chip separado, um bloqueio não derruba o número em que você atende.</p>
-      <div class="acoes"><button class="botao" data-acao="fechar-janela">Agora não</button>
-      <button class="botao primario" data-acao="ligar">Mostrar o QR Code</button></div>`;
-  } else {
-    html = `<h3>Conectando…</h3><p>Um instante.</p>
-      <div class="acoes"><button class="botao" data-acao="fechar-janela">Fechar</button></div>`;
-  }
-  por($("janela-numero-dentro"), html);
+  $("conta-conexao").textContent = fase === "conectado" ? "" : fase === "desligado" ? "desligado" : "…";
 }
 
 // ---- Painel ---------------------------------------------------------------------------------
@@ -940,10 +1193,10 @@ function proximoPasso() {
     return [`Enviando para “${esc(envio.lista.nome)}”`, `${plural(envio.enviadas, "mensagem saiu", "mensagens saíram")} agora. O envio continua com esta página fechada.`, `<a class="botao" href="#envio">Acompanhar</a>`];
   }
   if (naFila > 0 && conexao.fase !== "conectado") {
-    return [`${plural(naFila, "mensagem pronta", "mensagens prontas")}. Falta conectar o número.`, "Use um chip separado, só para prospectar. Ou abra cada lead e envie você mesmo.", `<button class="botao" data-acao="janela-numero">Conectar número</button>`];
+    return [`${plural(naFila, "mensagem pronta", "mensagens prontas")}. Falta conectar o número.`, "Conecte o WhatsApp na tela Conexão. Ou abra cada lead e envie você mesmo.", `<button class="botao" data-acao="ir-conexao">Conectar número</button>`];
   }
   if (naFila > 0) {
-    return [`${plural(naFila, "mensagem pronta", "mensagens prontas")} para sair`, "Escolha a lista e o ritmo, e mande um teste para o seu número antes.", `<a class="botao" href="#envio">Ir para o envio</a>`];
+    return [`${plural(naFila, "mensagem pronta", "mensagens prontas")} para sair`, "Monte o envio: a lista, a mensagem e o ritmo.", `<a class="botao" href="#envio">Ir para o envio</a>`];
   }
   if (semMensagem > 0) {
     const pedido = "Escreva as mensagens dos leads que estão sem mensagem";
@@ -1107,12 +1360,13 @@ $("procura").addEventListener("input", (evento) => {
 });
 
 // ---- Tela de busca --------------------------------------------------------------------------
-const IDEIAS = ["clínica de estética", "pet shop", "dentista", "academia", "barbearia", "restaurante", "salão de beleza", "oficina mecânica"];
 const MAX_TERMOS = 8;
 /** O que a pessoa quer buscar, um jeito de dizer por ficha. */
 const termos = [];
 /** Em que lista guardar: "" e uma lista nova, com o nome da busca. */
 let destinoDaBusca = "";
+/** Quantos leads novos a pessoa quer desta busca. */
+let quantosDaBusca = Math.min(200, Math.max(1, Number(lembrado("quantosDaBusca")) || 20));
 let buscasFeitas = [];
 
 function juntarTermo(texto) {
@@ -1142,22 +1396,33 @@ function desenharFichas() {
 /** As duas fileiras embaixo da barra: ideias do que buscar, e em que lista guardar. */
 function desenharApoioDaBusca() {
   if (!dados) return;
-  por(
-    $("ideias"),
-    termos.length === 0
-      ? `<span>Ideias</span>${IDEIAS.map((t) => `<button type="button" class="pilula" data-acao="ideia" data-termo="${esc(t)}">${esc(t)}</button>`).join("")}`
-      : `Cada jeito de dizer traz até 20 negócios. Acrescente outros nomes do mesmo nicho para trazer mais.`,
-  );
   if (destinoDaBusca && !dados.listas.some((l) => l.id === destinoDaBusca)) destinoDaBusca = "";
-  por(
-    $("destino"),
-    dados.listas.length === 0
-      ? ""
-      : `<span>Guardar em</span><button type="button" class="pilula ${destinoDaBusca === "" ? "ativa" : ""}" data-acao="destino" data-lista="">Lista nova</button>${dados.listas
-          .map((l) => `<button type="button" class="pilula ${destinoDaBusca === l.id ? "ativa" : ""}" data-acao="destino" data-lista="${esc(l.id)}">${esc(l.nome)}</button>`)
-          .join("")}`,
-  );
+  // As listas so sao redesenhadas quando mudam: um <select> refeito fecha na mao de quem o abriu.
+  const opcoes = `<option value="">Lista nova</option>${dados.listas.map((l) => `<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join("")}`;
+  const seletor = $("busca-lista");
+  if (seletor.dataset.html !== opcoes) {
+    seletor.innerHTML = opcoes;
+    seletor.dataset.html = opcoes;
+  }
+  seletor.value = destinoDaBusca;
 }
+
+/** A quantidade pedida, sempre entre 1 e o maximo de uma busca. */
+const MAX_NA_BUSCA = 200;
+function quantosPedidos() {
+  const digitado = Math.round(Number($("busca-quantos").value));
+  return Math.min(MAX_NA_BUSCA, Math.max(1, digitado || 20));
+}
+$("busca-quantos").value = quantosDaBusca;
+$("busca-quantos").addEventListener("change", () => {
+  if (Number($("busca-quantos").value) > MAX_NA_BUSCA) recado(`O máximo por busca é ${MAX_NA_BUSCA}. Para mais, faça outra busca: quem já está nas suas listas não vem de novo.`);
+  quantosDaBusca = quantosPedidos();
+  $("busca-quantos").value = quantosDaBusca;
+  lembrar("quantosDaBusca", String(quantosDaBusca));
+});
+$("busca-lista").addEventListener("change", () => {
+  destinoDaBusca = $("busca-lista").value;
+});
 
 function desenharBusca() {
   const { busca, negocios } = dados;
@@ -1195,7 +1460,7 @@ function desenharBusca() {
         : [];
       html = `<div class="achados-topo">
           <div><h2>${plural(r.novos, "lead novo", "leads novos")}${r.lista && r.novos ? ` em “${esc(r.lista.nome)}”` : ""}</h2>
-          <p>${fora.length ? `Ficaram de fora: ${fora.join(", ")}.` : "Todos os que apareceram entraram."}</p></div>
+          <p>${r.pedidos && r.novos < r.pedidos ? `Você pediu ${r.pedidos}: foi o que a busca achou com telefone. Outros nomes do mesmo nicho trazem mais. ` : ""}${fora.length ? `Ficaram de fora: ${fora.join(", ")}.` : r.pedidos ? "" : "Todos os que apareceram entraram."}</p></div>
           ${r.novos ? `<a class="botao primario" href="#leads" data-acao="ver-lista" data-lista="${esc(r.lista.id)}">Ver os ${r.novos}</a>` : ""}
         </div>
         ${amostra.length ? `<div class="amostra">${amostra
@@ -1263,67 +1528,69 @@ $("form-busca").addEventListener("submit", async (evento) => {
     recado("Diga a cidade, com o estado.");
     return $("busca-cidade").focus();
   }
-  buscaPedidaAqui = Boolean(await mandar("/api/busca", { cidade, termos: [...termos], listaId: destinoDaBusca || null, nomeDaLista: "" }));
+  buscaPedidaAqui = Boolean(await mandar("/api/busca", { cidade, termos: [...termos], listaId: destinoDaBusca || null, nomeDaLista: "", quantos: quantosPedidos() }));
 });
 
 // ---- Tela de envio --------------------------------------------------------------------------
+// Duas caras: a lista dos envios, um por linha, e o envio novo, montado em etapas.
+
+/** O envio que a pessoa esta montando. null = ela esta vendo a lista dos envios. */
+let novo = null;
+/** Envios abertos na lista, para seguirem abertos quando a tela se redesenha. */
+const enviosAbertos = new Set();
+const ETAPAS = ["Lista", "Mensagem", "Ritmo", "Conferir"];
+const TEM_NOME = /\{nome\}/i;
+const NOME_DO_MODO = { mesma: "a mesma para todos", cada: "uma para cada lead" };
+const traco = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONES = {
+  texto: traco('<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8M8 12h5"/>'),
+  imagem: traco('<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/>'),
+  video: traco('<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10l5-3v10l-5-3z"/>'),
+  audio: traco('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  documento: traco('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'),
+  ligado: traco('<path d="M20 6L9 17l-5-5"/>'),
+  desligado: traco('<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>'),
+};
+const ARTIGO = { imagem: "a imagem", video: "o vídeo", audio: "o áudio", documento: "o documento" };
+
+/** Quem ainda pode receber, na lista: tem telefone e esse numero ainda nao recebeu nada. */
+function quemPodeReceber(listaId) {
+  const jaForam = new Set(dados.negocios.filter((n) => n.situacao === "enviado" && n.telefone).map((n) => n.telefone));
+  const vistos = new Set();
+  return dados.negocios.filter((n) => {
+    if (n.lista !== listaId || !n.telefone || !["novo", "pronto", "falhou"].includes(n.situacao)) return false;
+    if (jaForam.has(n.telefone) || vistos.has(n.telefone)) return false;
+    vistos.add(n.telefone);
+    return true;
+  });
+}
+
+/** Quem recebe neste envio novo: todos os que podem, ou so os que ja tem mensagem. */
+function quemRecebeNoNovo() {
+  const podem = quemPodeReceber(novo.lista);
+  return modoDoNovo() === "cada" ? podem.filter((n) => n.situacao === "pronto" && n.mensagem) : podem;
+}
+
+const montarUnica = (texto, negocio) => texto.replace(/\{nome\}/gi, negocio.nome ?? "").trim();
+const megas = (bytes) => (bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1).replace(".", ",")} MB`);
+const diaEHora = (iso) => {
+  const d = new Date(iso);
+  return [d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }), d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })];
+};
+
+function crescerBalao() {
+  const area = $("unica");
+  if (!area.offsetParent) return; // escondido: nao ha altura para medir
+  area.style.height = "auto";
+  area.style.height = `${area.scrollHeight}px`;
+}
+
 function desenharEnvio() {
-  const { envio, conexao, enviadasHoje, limitePorDia, listas, filaPorLista } = dados;
-  const conectado = conexao.fase === "conectado";
-  const restam = Math.max(0, limitePorDia - enviadasHoje);
-
-  const alvo = envio.rodando ? envio.lista.id : listaEnvio;
-  por(
-    $("lista-envio"),
-    listas.length === 0
-      ? `<p class="aviso-linha">Você ainda não tem lista. <a class="elo" href="#buscar">Buscar contatos</a></p>`
-      : listas
-          .map((l) => {
-            const prontas = filaPorLista[l.id] ?? 0;
-            return `<button type="button" class="escolha ${l.id === alvo ? "ativa" : ""}" data-acao="escolher-envio" data-lista="${esc(l.id)}" aria-pressed="${l.id === alvo}" ${envio.rodando ? "disabled" : ""}>
-              ${rosto(l.nome)}
-              <span><b>${esc(l.nome)}</b><small>${prontas ? plural(prontas, "mensagem pronta", "mensagens prontas") : "nenhuma mensagem pronta"}</small></span>
-            </button>`;
-          })
-          .join(""),
-  );
-  const naFila = filaPorLista[alvo] ?? 0;
-
-  let resumo;
-  let nota = "";
-  let botao;
-  if (envio.rodando) {
-    resumo = `Enviando <span>· ${plural(envio.enviadas, "enviada", "enviadas")} agora · ${naFila} na fila desta lista</span>`;
-    nota = envio.atual
-      ? `Escrevendo para o nº ${envio.atual.n}, ${esc(envio.atual.nome)}…`
-      : envio.proximaEm
-        ? `A próxima sai em <span id="contagem"></span>.`
-        : "";
-    botao = `<button class="botao perigo" data-acao="parar">Parar o envio</button>`;
-  } else {
-    resumo = `${plural(naFila, "mensagem pronta", "mensagens prontas")} <span>· hoje saíram ${enviadasHoje} de ${limitePorDia}</span>`;
-    let motivo = "";
-    if (listas.length === 0) motivo = "Você ainda não tem lista. Comece pela tela Buscar.";
-    else if (naFila === 0) motivo = "Nenhum lead desta lista está como Pronto. Escreva as mensagens na tela de Leads, ou peça à IA para escrever.";
-    else if (!conectado) motivo = "Conecte o número da prospecção para enviar pelo sistema.";
-    else if (restam === 0) motivo = "O limite de hoje já foi usado. Aumente as mensagens por dia, ou envie amanhã.";
-    nota = motivo;
-    const quantas = Math.min(naFila, restam);
-    botao = `<button class="botao primario" data-acao="comecar" ${motivo ? "disabled" : ""}>${
-      motivo ? "Enviar pelo sistema" : `Enviar ${plural(quantas, "mensagem", "mensagens")}`
-    }</button>`;
-  }
-
-  let ultimo = "";
-  if (!envio.rodando && envio.terminouEm) {
-    const partes = [plural(envio.enviadas, "enviada", "enviadas")];
-    if (envio.semWhatsapp) partes.push(`${envio.semWhatsapp} sem WhatsApp`);
-    if (envio.falhas) partes.push(plural(envio.falhas, "falhou", "falharam"));
-    ultimo = `<div class="ultimo">Último envio, ${quando(envio.terminouEm)}, para “${esc(envio.lista?.nome)}”: ${partes.join(", ")}.${envio.motivo ? ` Parou porque ${esc(envio.motivo)}.` : ""}</div>`;
-  }
-
-  por($("envio"), `<div class="resumo">${resumo}</div><div class="nota-envio">${nota}</div>`);
-  por($("envio-acao"), `${botao}${ultimo}`);
+  if (novo && !dados.listas.some((l) => l.id === novo.lista)) novo.lista = null;
+  $("envios-lista").hidden = Boolean(novo);
+  $("envio-novo").hidden = !novo;
+  if (novo) desenharNovo();
+  else desenharEnvios();
   contar();
 }
 
@@ -1333,13 +1600,509 @@ function contar() {
   el.textContent = duracao(Math.max(0, Math.round((new Date(dados.envio.proximaEm) - Date.now()) / 1000)));
 }
 
-function explicarPausa() {
+// ---- Tela de envio: os envios, um por linha -----------------------------------------------------
+/** O balao com o que o envio manda: o arquivo, se houver, e o texto. */
+function balaoDoEnvio(tipo, arquivo, texto) {
+  const anexo = arquivo ? `<span class="anexo">${dados.tipos[tipo]?.nome ?? ""}: ${esc(arquivo.nome)}</span>` : "";
+  return `<div class="texto-enviado">${anexo}<span>${esc(texto ?? "")}</span></div>`;
+}
+
+function seloDoEnvio(c) {
+  if (c.situacao === "enviando") return `<span class="selo pronto">Enviando</span>`;
+  if (c.situacao === "agendado") return `<span class="selo novo">Agendado</span>`;
+  if (c.situacao === "pausado") return `<span class="selo falhou">Parado</span>`;
+  if (c.situacao === "terminado") return `<span class="selo enviado">Terminado</span>`;
+  return `<span class="selo">Cancelado</span>`;
+}
+
+function linhaDeQuemRecebeu(n, mostrarTexto) {
+  const em = n.enviadoEm ?? n.tentadoEm;
+  const hora = em ? diaEHora(em)[1] : "";
+  const [classe, selo] =
+    n.situacao === "enviado" ? ["enviado", n.enviadoPor === "mao" ? "Enviado por você" : "Enviado"] : n.situacao === "falhou" ? ["falhou", "Falhou"] : ["", "Sem WhatsApp"];
+  const embaixo = n.situacao === "falhou" && n.erro ? esc(n.erro) : mostrarTexto && n.situacao === "enviado" ? esc(n.mensagem) : esc(telefone(n.telefone));
+  return `<div class="quem-recebeu"><time>${hora}</time><span><b>${esc(n.nome)}</b><small>${embaixo}</small></span><span class="selo ${classe}">${selo}</span></div>`;
+}
+
+function desenharEnvios() {
+  const { envio, campanhas, negocios } = dados;
+
+  // Enquanto um envio roda, ele fica no alto, com o botao de parar.
+  let agora = "";
+  if (envio.rodando) {
+    const andamento = envio.atual
+      ? `Escrevendo para ${esc(envio.atual.nome)}…`
+      : envio.proximaEm
+        ? `A próxima sai em <span id="contagem"></span>.`
+        : "";
+    agora = `<div class="agora"><div><h2>Enviando para “${esc(envio.lista.nome)}”</h2>
+      <p>${plural(envio.enviadas, "mensagem saiu", "mensagens saíram")} agora. ${andamento} O envio continua com esta página fechada.</p></div>
+      <button class="botao" data-acao="parar">Parar o envio</button></div>`;
+  }
+  por($("envio-agora"), agora);
+
+  const porEnvio = new Map();
+  for (const n of negocios) {
+    if (!n.campanha || !["enviado", "sem_whatsapp", "falhou"].includes(n.situacao)) continue;
+    if (!porEnvio.has(n.campanha)) porEnvio.set(n.campanha, []);
+    porEnvio.get(n.campanha).push(n);
+  }
+  const maisNovoPrimeiro = (a, b) => (b.enviadoEm ?? b.tentadoEm ?? "").localeCompare(a.enviadoEm ?? a.tentadoEm ?? "");
+
+  const linhas = campanhas.map((c) => {
+    const [dia, hora] = diaEHora(c.comecouEm ?? c.comecaEm ?? c.criadaEm);
+    const tentados = c.enviadas + c.semWhatsapp + c.falhas;
+    const faltam = Math.max(0, c.total - tentados);
+    const resumoDoTexto = c.modo === "cada" ? "" : c.texto ? ` · “${esc(c.texto.length > 46 ? `${c.texto.slice(0, 46)}…` : c.texto)}”` : "";
+
+    let situacao = "";
+    let acoes = "";
+    const id = esc(c.id);
+    if (c.situacao === "agendado") {
+      const [d, h] = diaEHora(c.comecaEm ?? c.criadaEm);
+      situacao = `Começa em ${d}, às ${h}, para ${plural(c.total, "lead", "leads")}. O computador precisa estar ligado nessa hora.${c.espera ? ` Ainda não começou: ${esc(c.espera)}` : ""}`;
+      acoes = `<button class="botao" data-acao="continuar-envio" data-envio="${id}">Enviar agora</button>
+        <button class="botao perigo" data-acao="cancelar-envio" data-envio="${id}">Cancelar o envio</button>`;
+    } else if (c.situacao === "pausado") {
+      situacao = `Parou porque ${esc(c.motivo ?? "foi interrompido")}. ${faltam ? `${plural(faltam, "lead ficou", "leads ficaram")} sem receber.` : ""}`;
+      acoes = `<button class="botao primario" data-acao="continuar-envio" data-envio="${id}" ${envio.rodando ? "disabled" : ""}>Continuar</button>
+        <button class="botao" data-acao="cancelar-envio" data-envio="${id}">Encerrar assim</button>`;
+    } else if (c.situacao === "enviando") {
+      situacao = `Em andamento. ${plural(faltam, "lead ainda vai receber", "leads ainda vão receber")}.`;
+    } else {
+      const partes = [plural(c.enviadas, "enviada", "enviadas")];
+      if (c.semWhatsapp) partes.push(`${c.semWhatsapp} sem WhatsApp`);
+      if (c.falhas) partes.push(plural(c.falhas, "falhou", "falharam"));
+      situacao = `${c.situacao === "cancelado" ? "Cancelado" : "Terminou"}${c.terminouEm ? ` em ${diaEHora(c.terminouEm).join(", às ")}` : ""}: ${partes.join(", ")}.`;
+    }
+
+    const quem = (porEnvio.get(c.id) ?? []).sort(maisNovoPrimeiro);
+    const mostra = c.modo === "cada" ? "" : c.texto || c.arquivo ? balaoDoEnvio(c.tipo, c.arquivo, c.texto) : "";
+    return `<details class="envio-linha" data-envio="${id}" ${enviosAbertos.has(c.id) ? "open" : ""}>
+      <summary>
+        <span class="envio-quando"><b>${dia}</b><small>${hora}</small></span>
+        ${rosto(c.lista.nome, "pequeno")}
+        <span><b>${esc(c.lista.nome)}</b><small>${dados.tipos[c.tipo]?.nome ?? ""}, ${NOME_DO_MODO[c.modo]}${resumoDoTexto}</small></span>
+        <span class="envio-conta"><b>${c.enviadas} de ${c.total}</b><small>enviadas</small></span>
+        ${seloDoEnvio(c)}
+      </summary>
+      <div class="envio-dentro">
+        <p class="situacao-do-envio">${situacao}</p>
+        ${acoes ? `<div class="modo-acoes">${acoes}</div>` : ""}
+        ${mostra}
+        ${c.modo === "cada" && c.arquivo ? balaoDoEnvio(c.tipo, c.arquivo, "") : ""}
+        ${quem.map((n) => linhaDeQuemRecebeu(n, c.modo === "cada")).join("")}
+      </div>
+    </details>`;
+  });
+
+  // O que a pessoa mandou ela mesma, lead por lead, nao pertence a envio nenhum.
+  const porMao = negocios.filter((n) => n.situacao === "enviado" && n.enviadoPor === "mao").sort(maisNovoPrimeiro);
+  if (porMao.length) {
+    const [dia, hora] = diaEHora(porMao[0].enviadoEm);
+    linhas.push(`<details class="envio-linha" data-envio="por-mao" ${enviosAbertos.has("por-mao") ? "open" : ""}>
+      <summary>
+        <span class="envio-quando"><b>${dia}</b><small>${hora}</small></span>
+        ${rosto("Por você", "pequeno")}
+        <span><b>Enviadas por você</b><small>Uma a uma, pelo botão “Abrir no WhatsApp” de cada lead</small></span>
+        <span class="envio-conta"><b>${porMao.length}</b><small>${porMao.length === 1 ? "enviada" : "enviadas"}</small></span>
+        <span class="selo enviado">Por você</span>
+      </summary>
+      <div class="envio-dentro">${porMao.map((n) => linhaDeQuemRecebeu(n, true)).join("")}</div>
+    </details>`);
+  }
+
+  por(
+    $("envios"),
+    linhas.length
+      ? linhas.join("")
+      : `<div class="sem-envios"><b>Nenhum envio ainda</b>Um envio leva uma mensagem para uma lista: você escolhe a lista, a mensagem, o ritmo e quando começa. O histórico de cada um fica aqui.
+          <div><button class="botao primario" data-acao="novo-envio">Fazer o primeiro envio</button></div></div>`,
+  );
+}
+
+// O "toggle" de um <details> nao sobe pela pagina: por isso a escuta e na descida (true).
+document.addEventListener(
+  "toggle",
+  (evento) => {
+    const id = evento.target.dataset?.envio;
+    if (!id) return;
+    if (evento.target.open) enviosAbertos.add(id);
+    else enviosAbertos.delete(id);
+  },
+  true,
+);
+
+// ---- Tela de envio: o envio novo, em etapas -----------------------------------------------------
+function comecarNovo() {
+  const comQuem = dados.listas.map((l) => [l.id, quemPodeReceber(l.id).length]).sort((a, b) => b[1] - a[1]);
+  novo = { etapa: 1, lista: comQuem[0]?.[0] ?? null, tipo: "texto", modo: null, arquivo: null, previa: null, subindo: false, quando: "agora" };
+  $("unica").value = lembrado("rascunhoDoEnvio") ?? "";
+  $("resultado-teste").textContent = "";
+  desenharEnvio();
+  scrollTo(0, 0);
+}
+
+function sairDoNovo() {
+  if (novo?.previa) URL.revokeObjectURL(novo.previa);
+  novo = null;
+  desenharEnvio();
+  scrollTo(0, 0);
+}
+
+/** Sem escolha da pessoa: lista que ja tem mensagens fica em "cada"; lista sem nenhuma, em "mesma". */
+function modoDoNovo() {
+  if (novo.tipo === "audio") return "mesma";
+  if (novo.modo) return novo.modo;
+  return quemPodeReceber(novo.lista).some((n) => n.situacao === "pronto" && n.mensagem) ? "cada" : "mesma";
+}
+
+/** O dia e a hora marcados, ou null se os campos nao formam uma data. */
+function horaMarcada() {
+  const dia = $("quando-dia").value;
+  const hora = $("quando-hora").value;
+  if (!dia || !hora) return null;
+  const marcada = new Date(`${dia}T${hora}`);
+  return Number.isNaN(marcada.getTime()) ? null : marcada;
+}
+
+/** O que a tela manda para o sistema: o mesmo pedido serve para o teste e para o envio. */
+function pedidoDoNovo() {
+  const pedido = { lista: novo.lista, tipo: novo.tipo, modo: modoDoNovo(), texto: $("unica").value, arquivo: novo.arquivo };
+  if (novo.quando === "agendar") pedido.comecaEm = horaMarcada()?.toISOString();
+  return pedido;
+}
+
+/** O que impede de passar desta etapa, ou "". */
+function problemaDaEtapa(etapa) {
+  const podem = novo.lista ? quemPodeReceber(novo.lista) : [];
+  if (etapa === 1) {
+    if (dados.listas.length === 0) return "Você ainda não tem lista. Comece pela tela Buscar.";
+    if (!novo.lista) return "Escolha uma lista.";
+    if (podem.length === 0) return "Todos os leads desta lista já receberam. Escolha outra, ou busque mais contatos.";
+    return "";
+  }
+  if (etapa === 2) {
+    const modo = modoDoNovo();
+    if (novo.subindo) return "Espere o arquivo terminar de subir.";
+    if (novo.tipo !== "texto" && !novo.arquivo) return `Escolha ${ARTIGO[novo.tipo]}.`;
+    if (modo === "cada") {
+      return podem.some((n) => n.situacao === "pronto" && n.mensagem) ? "" : "Nenhum lead desta lista tem mensagem. Peça à IA para escrever, ou use “A mesma para todos”.";
+    }
+    if (novo.tipo === "audio") return "";
+    const limpo = $("unica").value.trim();
+    if (!limpo) return novo.tipo === "texto" ? "Escreva a mensagem." : "";
+    if (/\{[^{}]*\}/.test(limpo.replace(/\{nome\}/gi, ""))) return "O único campo que vale é {nome}.";
+    if (/https?:\/\/|www\./i.test(limpo)) return "Tire o link: primeira mensagem com link, de número desconhecido, parece golpe.";
+    return "";
+  }
+  if (etapa === 4) {
+    if (novo.quando === "agendar") {
+      const marcada = horaMarcada();
+      if (!marcada) return "Diga o dia e a hora de começo.";
+      if (marcada.getTime() < Date.now()) return "Essa hora já passou. Escolha outra, ou envie agora.";
+      return "";
+    }
+    if (dados.envio.rodando) return "Já há um envio rodando. Espere ele terminar, ou agende este.";
+    if (dados.conexao.fase !== "conectado") return `Para enviar agora, falta conectar o número. <a class="elo" href="#conexao">Conectar</a>`;
+    if (dados.enviadasHoje >= dados.limitePorDia) return "O limite de hoje já foi usado. Aumente as mensagens por dia na etapa 3, ou agende para amanhã.";
+  }
+  return "";
+}
+
+function irParaEtapa(destino) {
+  for (let etapa = novo.etapa; etapa < destino; etapa++) {
+    const problema = problemaDaEtapa(etapa);
+    if (problema) return recado(problema.replace(/<[^>]+>/g, ""));
+  }
+  novo.etapa = Math.min(4, Math.max(1, destino));
+  desenharEnvio();
+  scrollTo(0, 0);
+  if (novo.etapa === 2 && modoDoNovo() === "mesma" && novo.tipo !== "audio") $("unica").focus();
+}
+
+function escolherTipo(tipo) {
+  if (tipo === novo.tipo) return;
+  if (novo.previa) URL.revokeObjectURL(novo.previa);
+  Object.assign(novo, { tipo, arquivo: null, previa: null });
+  $("arquivo").value = "";
+  desenharEnvio();
+}
+
+/** Manda o arquivo escolhido para o sistema guardar. So depois disso ele entra no envio. */
+async function subirArquivo(arquivo) {
+  if (!novo || !arquivo) return;
+  const regra = dados.tipos[novo.tipo];
+  const extensao = arquivo.name.split(".").pop().toLowerCase();
+  if (regra.extensoes && !regra.extensoes.includes(extensao)) {
+    return recado(`Para ${regra.nome.toLowerCase()}, o arquivo precisa ser ${regra.extensoes.map((e) => `.${e}`).join(", ")}.`);
+  }
+  if (arquivo.size > regra.maximoMb * 1048576) return recado(`O arquivo tem ${megas(arquivo.size)}. O limite para ${regra.nome.toLowerCase()} é de ${regra.maximoMb} MB.`);
+
+  const tipo = novo.tipo;
+  novo.subindo = true;
+  desenharEnvio();
+  try {
+    const resposta = await fetch(`/api/arquivo?tipo=${tipo}&nome=${encodeURIComponent(arquivo.name)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: arquivo,
+    });
+    const resultado = await resposta.json();
+    if (!novo || novo.tipo !== tipo) return; // a pessoa saiu ou trocou de tipo enquanto subia
+    if (resposta.ok) {
+      if (novo.previa) URL.revokeObjectURL(novo.previa);
+      novo.arquivo = resultado.arquivo;
+      novo.previa = tipo === "imagem" ? URL.createObjectURL(arquivo) : null;
+    } else {
+      recado(resultado.erro ?? "Não consegui guardar o arquivo.");
+    }
+  } catch {
+    recado("A tela não respondeu. Peça à IA para abrir a tela de novo.");
+  } finally {
+    if (novo) novo.subindo = false;
+    $("arquivo").value = "";
+    if (dados) desenharEnvio();
+  }
+}
+
+$("arquivo").addEventListener("change", (evento) => void subirArquivo(evento.target.files[0]));
+// Soltar o arquivo em cima da area tambem vale.
+for (const nome of ["dragover", "dragleave", "drop"]) {
+  document.addEventListener(nome, (evento) => {
+    const area = evento.target.closest?.(".soltar");
+    if (!area) return;
+    evento.preventDefault();
+    area.classList.toggle("sobre", nome === "dragover");
+    if (nome === "drop") void subirArquivo(evento.dataTransfer.files[0]);
+  });
+}
+
+function desenharNovo() {
+  const { listas, limitePorDia, enviadasHoje, conexao } = dados;
+  const modo = modoDoNovo();
+  const podem = novo.lista ? quemPodeReceber(novo.lista) : [];
+  const recebem = novo.lista ? quemRecebeNoNovo() : [];
+  const etapa = novo.etapa;
+
+  por(
+    $("etapas"),
+    ETAPAS.map((nome, i) => {
+      const numero = i + 1;
+      const classe = numero === etapa ? "etapa-atual" : numero < etapa ? "etapa-feita" : "";
+      const bola = numero < etapa ? ICONES.ligado.replace("<svg ", '<svg width="15" height="15" ') : numero;
+      return `<li class="${classe}"><button type="button" data-acao="ir-etapa" data-etapa="${numero}" ${numero < etapa ? "" : "disabled"} ${numero === etapa ? 'aria-current="step"' : ""}>
+        <span class="bola">${bola}</span><span class="nome">${nome}</span></button></li>`;
+    }).join(""),
+  );
+  for (let i = 1; i <= 4; i++) $(`etapa-${i}`).hidden = i !== etapa;
+
+  if (etapa === 1) {
+    por(
+      $("lista-envio"),
+      listas.length === 0
+        ? `<p class="aviso-linha">Você ainda não tem lista. <a class="elo" href="#buscar">Buscar contatos</a></p>`
+        : listas
+            .map((l) => {
+              const quantos = quemPodeReceber(l.id).length;
+              return `<button type="button" class="escolha ${l.id === novo.lista ? "ativa" : ""}" data-acao="lista-do-envio" data-lista="${esc(l.id)}" aria-pressed="${l.id === novo.lista}">
+                ${rosto(l.nome)}
+                <span><b>${esc(l.nome)}</b><small>${quantos ? `${plural(quantos, "lead", "leads")} para receber` : "todos já receberam"}</small></span>
+              </button>`;
+            })
+            .join(""),
+    );
+  }
+
+  if (etapa === 2) {
+    const regra = dados.tipos[novo.tipo];
+    por(
+      $("tipos"),
+      Object.entries(dados.tipos)
+        .map(([chave, t]) => `<button type="button" class="tipo ${chave === novo.tipo ? "ativa" : ""}" data-acao="tipo" data-tipo="${chave}" aria-pressed="${chave === novo.tipo}">${ICONES[chave]}${t.nome}</button>`)
+        .join(""),
+    );
+    por(
+      $("modo-envio"),
+      novo.tipo === "audio"
+        ? ""
+        : `<button type="button" data-acao="modo" data-modo="mesma" class="${modo === "mesma" ? "ativa" : ""}" aria-pressed="${modo === "mesma"}">A mesma para todos</button>
+           <button type="button" data-acao="modo" data-modo="cada" class="${modo === "cada" ? "ativa" : ""}" aria-pressed="${modo === "cada"}">Uma para cada lead</button>`,
+    );
+
+    $("arquivo").accept = regra.extensoes ? regra.extensoes.map((e) => `.${e}`).join(",") : "";
+    let areaDoArquivo = "";
+    if (novo.tipo !== "texto") {
+      const aceita = regra.extensoes ? regra.extensoes.map((e) => `.${e}`).join(", ") : "qualquer arquivo";
+      if (novo.subindo) areaDoArquivo = `<div class="soltar">Guardando o arquivo…</div>`;
+      else if (novo.arquivo) {
+        areaDoArquivo = `<div class="arquivo-escolhido">
+          ${novo.previa ? `<img src="${novo.previa}" alt="">` : `<span class="icone">${ICONES[novo.tipo]}</span>`}
+          <span><b>${esc(novo.arquivo.nome)}</b><small>${megas(novo.arquivo.tamanho)}</small></span>
+          <button class="botao" data-acao="escolher-arquivo">Trocar</button>
+        </div>`;
+      } else {
+        areaDoArquivo = `<div class="soltar"><button class="botao primario" data-acao="escolher-arquivo">Escolher ${ARTIGO[novo.tipo]}</button>
+          <span>ou arraste para cá. Aceita ${aceita}, até ${regra.maximoMb} MB.</span></div>`;
+      }
+    }
+    por($("area-arquivo"), areaDoArquivo);
+
+    const comTexto = novo.tipo !== "audio";
+    $("modo-mesma").hidden = !comTexto || modo !== "mesma";
+    $("modo-cada").hidden = !comTexto || modo !== "cada";
+    const area = $("unica");
+    const ehLegenda = novo.tipo !== "texto";
+    area.placeholder = ehLegenda ? "Legenda, se quiser. Pode usar {nome}." : "Olá, {nome}! Escreva aqui a mensagem que todos da lista vão receber.";
+    por(
+      $("explica-unica"),
+      `${ehLegenda ? "Legenda, se quiser." : "A mensagem."} Use
+       <button type="button" class="campo-nome" data-acao="por-nome" title="Pôr o nome do negócio aqui">{nome}</button> onde vai o nome de cada negócio.`,
+    );
+
+    if (comTexto && modo === "mesma") {
+      const limpo = area.value.trim();
+      const problema = limpo ? problemaDaEtapa(2) : "";
+      const ehDoTexto = problema && !/arquivo|Escolha/.test(problema);
+      let previa = "";
+      if (ehDoTexto) previa = problema;
+      else if (limpo && podem[0] && TEM_NOME.test(limpo)) previa = `No primeiro da lista, {nome} vira <b>${esc(podem[0].nome)}</b>.`;
+      $("unica-previa").classList.toggle("erro", Boolean(ehDoTexto));
+      por($("unica-previa"), previa);
+      crescerBalao();
+    }
+    if (comTexto && modo === "cada") {
+      const comMensagem = podem.filter((n) => n.situacao === "pronto" && n.mensagem).length;
+      const faltam = podem.length - comMensagem;
+      const pedido = `Escreva as mensagens da lista "${nomeDaLista(novo.lista)}"`;
+      const estado =
+        comMensagem === 0
+          ? `<b>Nenhum dos ${podem.length} leads</b> tem mensagem ainda.`
+          : faltam === 0
+            ? `<b>${podem.length === 1 ? "O lead" : `Os ${podem.length} leads`}</b> já ${podem.length === 1 ? "tem" : "têm"} mensagem.`
+            : `<b>${comMensagem} de ${podem.length} leads</b> têm mensagem. Só eles recebem.`;
+      por(
+        $("modo-cada"),
+        `<p class="estado-do-modo">${estado}</p>
+         <p class="explica">${faltam ? `Quem escreve é a IA, na conversa, uma mensagem diferente para cada negócio. Peça a ela: <q>${esc(pedido)}</q>` : "Cada negócio recebe a mensagem que está no cartão dele."}${ehLegenda ? " Ela vai como legenda do arquivo." : ""}</p>
+         <div class="modo-acoes">
+           ${faltam ? `<button class="botao" data-acao="copiar-pedido" data-pedido="${esc(pedido)}">Copiar o pedido</button>` : ""}
+           <a class="botao" href="#leads" data-acao="ver-lista" data-lista="${esc(novo.lista)}">Ver as mensagens</a>
+         </div>`,
+      );
+    }
+    $("aviso-do-tipo").textContent =
+      novo.tipo === "audio"
+        ? "O áudio vai igual para todos. Arquivo .ogg chega como áudio gravado na hora; .mp3 e .m4a chegam como arquivo de áudio."
+        : "";
+  }
+
+  const restam = Math.max(0, limitePorDia - enviadasHoje);
+  const hoje = Math.min(recebem.length, restam);
+  if (etapa === 3) desenharRegua();
+
+  if (etapa === 4) {
+    const primeiro = recebem[0];
+    const textoDoPrimeiro = novo.tipo === "audio" ? "" : modo === "cada" ? (primeiro?.mensagem ?? "") : primeiro ? montarUnica($("unica").value, primeiro) : "";
+    const agendando = novo.quando === "agendar";
+    const sobra = recebem.length > limitePorDia ? ` ${plural(recebem.length - limitePorDia, "fica", "ficam")} para depois: o envio para no limite do dia, e você clica em Continuar.` : "";
+    por(
+      $("conferencia"),
+      `<div class="conferido"><span class="conferido-nome">Para</span><div><b>${esc(nomeDaLista(novo.lista))}</b> · ${plural(recebem.length, "lead vai receber", "leads vão receber")}</div></div>
+       <div class="conferido"><span class="conferido-nome">Mensagem</span><div>${dados.tipos[novo.tipo].nome}, ${NOME_DO_MODO[modo]}
+         ${balaoDoEnvio(novo.tipo, novo.arquivo, textoDoPrimeiro)}
+         ${primeiro && novo.tipo !== "audio" ? `<small>É como chega para ${esc(primeiro.nome)}, o primeiro da lista.</small>` : ""}</div></div>
+       <div class="conferido"><span class="conferido-nome">Ritmo</span><div>Até ${limitePorDia} por dia, com pausa de ${duracao(dados.intervaloSegundos)} a ${duracao(dados.intervaloMaximoSegundos)}.
+         <small>${agendando ? "" : `Hoje ${hoje === 1 ? "sai" : "saem"} ${hoje}.`}${sobra}</small></div></div>`,
+    );
+    por(
+      $("quando"),
+      `<button type="button" data-acao="quando" data-quando="agora" class="${agendando ? "" : "ativa"}" aria-pressed="${!agendando}">Agora</button>
+       <button type="button" data-acao="quando" data-quando="agendar" class="${agendando ? "ativa" : ""}" aria-pressed="${agendando}">Agendar</button>`,
+    );
+    $("quando-campos").hidden = !agendando;
+    $("explica-quando").textContent = agendando
+      ? "O computador precisa estar ligado na hora marcada."
+      : "";
+  }
+
+  const problema = problemaDaEtapa(etapa);
+  const ultima = etapa === 4;
+  const rotulo = !ultima ? "Seguir" : novo.quando === "agendar" ? "Agendar o envio" : `Enviar ${plural(hoje, "mensagem", "mensagens")} agora`;
+  por(
+    $("rodape-etapas"),
+    `${etapa > 1 ? `<button class="botao alto" data-acao="voltar-etapa">Voltar</button>` : ""}
+     <span class="nota">${problema}</span>
+     <button class="botao primario alto" data-acao="${ultima ? "criar-envio" : "seguir-etapa"}" ${problema ? "disabled" : ""}>${rotulo}</button>`,
+  );
+}
+
+async function criarEnvio() {
+  const agendando = novo.quando === "agendar";
+  const resultado = await mandar("/api/envio/criar", pedidoDoNovo());
+  if (!resultado) return;
+  enviosAbertos.add(resultado.campanha.id);
+  lembrar("rascunhoDoEnvio", "");
+  $("unica").value = "";
+  desenhoDaLista = "";
+  sairDoNovo();
+  recado(agendando ? "Envio agendado." : "O envio começou.");
+}
+
+$("unica").addEventListener("input", () => {
+  lembrar("rascunhoDoEnvio", $("unica").value);
+  if (dados && novo) desenharEnvio();
+});
+for (const id of ["quando-dia", "quando-hora"]) $(id).addEventListener("input", () => dados && novo && desenharEnvio());
+
+/** Tres ritmos prontos. O que esta em uso fica marcado; numeros diferentes, nenhum. */
+const RITMOS = [
+  { nome: "Cuidadoso", dia: 10, min: 120, max: 300, velocidade: 1 },
+  { nome: "Normal", dia: 20, min: 60, max: 120, velocidade: 2 },
+  { nome: "Rápido", dia: 40, min: 20, max: 60, velocidade: 3 },
+];
+
+function desenharRitmos() {
+  const dia = Number($("por-dia").value);
   const min = Number($("pausa-min").value);
   const max = Number($("pausa-max").value);
-  $("explica-pausa").textContent =
-    max > min
-      ? `A cada mensagem o sistema sorteia uma espera entre ${duracao(min)} e ${duracao(max)}. Para uma pausa fixa, ponha o mesmo número nos dois.`
-      : `Pausa fixa de ${duracao(min)}. Para variar, ponha um número maior no segundo campo.`;
+  por(
+    $("ritmos"),
+    RITMOS.map((r) => {
+      const ativa = r.dia === dia && r.min === min && r.max === max;
+      return `<button type="button" class="ritmo ${ativa ? "ativa" : ""}" data-acao="ritmo-pronto" data-dia="${r.dia}" data-min="${r.min}" data-max="${r.max}" aria-pressed="${ativa}">
+        <span class="velocidade v${r.velocidade}" aria-hidden="true"><i></i><i></i><i></i></span>
+        <b>${r.nome}</b><small>${r.dia} por dia</small><small>pausa de ${duracao(r.min)} a ${duracao(r.max)}</small>
+      </button>`;
+    }).join(""),
+  );
+}
+
+/** A regua mostra o envio no tempo: uma bolinha por mensagem, com as esperas desiguais. */
+function desenharRegua() {
+  const dia = Math.max(1, Number($("por-dia").value) || 1);
+  const min = Math.max(0, Number($("pausa-min").value) || 0);
+  const max = Math.max(min, Number($("pausa-max").value) || 0);
+  const naLista = novo?.lista ? quemRecebeNoNovo().length : 0;
+  const quantas = Math.max(1, Math.min(naLista || dia, dia));
+  const bolinhas = Math.min(quantas, 16);
+  // As esperas sao "sorteadas" de um jeito fixo, para a regua nao tremer a cada redesenho.
+  const tempos = [0];
+  for (let i = 1; i < bolinhas; i++) tempos.push(tempos[i - 1] + min + (max - min) * (((i * 7919) % 97) / 96) + 8);
+  const fim = tempos.at(-1) || 1;
+  const total = Math.max(60, Math.round(((quantas - 1) * ((min + max) / 2 + 8)) / 60) * 60);
+  por(
+    $("regua"),
+    `<div class="regua-trilho" aria-hidden="true">${tempos.map((t) => `<i style="left:${((t / fim) * 100).toFixed(2)}%"></i>`).join("")}</div>
+     <p><b>${plural(quantas, "mensagem", "mensagens")}${quantas > 1 ? ` em cerca de ${duracao(total)}` : ""}</b>${
+       quantas > 1 ? (max > min ? `, com uma espera diferente a cada uma, de ${duracao(min)} a ${duracao(max)}.` : `, com ${duracao(min)} de espera entre elas.`) : "."
+     }${naLista > dia ? ` ${plural(naLista - dia, "fica", "ficam")} para depois.` : ""}</p>`,
+  );
+}
+
+function explicarPausa() {
+  desenharRitmos();
+  desenharRegua();
 }
 
 /** Os campos so recebem o valor guardado quando ele muda, e nunca enquanto a pessoa digita. */
@@ -1365,25 +2128,26 @@ document.addEventListener("change", async (evento) => {
   explicarPausa();
   evento.target.blur();
   ritmoMostrado = "";
-  const resultado = await mandar("/api/ritmo", {
+  await mandar("/api/ritmo", {
     limitePorDia: Number($("por-dia").value),
     intervaloSegundos: Number(min.value),
     intervaloMaximoSegundos: Number(max.value),
   });
-  if (resultado) recado("Ritmo guardado.");
 });
 
 $("form-teste").addEventListener("submit", async (evento) => {
   evento.preventDefault();
+  if (!novo) return;
   const saida = $("resultado-teste");
   $("botao-teste").disabled = true;
   saida.className = "aviso-linha";
   saida.textContent = "Mandando… leva alguns segundos.";
   try {
+    const { comecaEm, ...pedido } = pedidoDoNovo();
     const resposta = await fetch("/api/envio/teste", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ numero: $("numero-teste").value, lista: listaEnvio }),
+      body: JSON.stringify({ numero: $("numero-teste").value, ...pedido }),
     });
     const resultado = await resposta.json();
     if (resposta.ok) {
@@ -1399,6 +2163,61 @@ $("form-teste").addEventListener("submit", async (evento) => {
   $("botao-teste").disabled = false;
 });
 
+// ---- Tela de conexao --------------------------------------------------------------------------
+function desenharConexao() {
+  const { fase, qr, numero, aviso } = dados.conexao;
+  // O QR Code leva a pessoa para ca quando surge, venha de um clique ou de um comando da IA
+  // (npm run conectar). Depois disso ela pode sair da tela sem ser puxada de volta.
+  if (fase === "qr" && faseVista !== "qr" && location.hash !== "#conexao") location.hash = "conexao";
+  faseVista = fase;
+
+  if (fase === "conectado") {
+    const ultimo = dados.negocios.reduce((maior, n) => (n.enviadoPor !== "mao" && n.enviadoEm && n.enviadoEm > maior ? n.enviadoEm : maior), "");
+    por(
+      $("conexao"),
+      `<div class="conexao-ativa">
+        <section class="cartao cartao-numero">
+          <div class="numero-foto"><span class="numero-icone">${ICONES.desligado}</span><span class="ponto-vivo" aria-hidden="true"></span></div>
+          <div class="numero-dados">
+            <span class="selo-conectado">Conectado</span>
+            <strong class="numero-telefone">+55 ${esc(telefone(numero) || numero)}</strong>
+          </div>
+          <button class="botao perigo" data-acao="sair">Desconectar</button>
+        </section>
+        <section class="cartao atividade-conexao" aria-label="Envios de hoje">
+          <div><span>Enviadas hoje</span><strong>${dados.enviadasHoje}</strong></div>
+          <div><span>Limite por dia</span><strong>${dados.limitePorDia}</strong></div>
+          <div><span>Último envio</span><strong class="texto">${ultimo ? haQuanto(ultimo) : "nenhum ainda"}</strong></div>
+        </section>
+      </div>`,
+    );
+    return;
+  }
+
+  const caixa =
+    fase === "qr" && qr
+      ? `<div><img src="${qr}" alt="QR Code para conectar o WhatsApp"><p class="qr-legenda">O código se renova sozinho. Pode apontar o celular.</p></div>`
+      : fase === "desligado"
+        ? `<div class="qr-vazio"><p>${esc(aviso) || "O código aparece aqui e se renova sozinho até você ler."}</p>
+            <button class="botao primario" data-acao="ligar">Gerar QR Code</button></div>`
+        : `<div class="qr-vazio"><p>Gerando o código…</p></div>`;
+  por(
+    $("conexao"),
+    `<div class="conexao-qr">
+      <div class="cartao qrcode">${caixa}</div>
+      <div class="conexao-instrucoes">
+        <h2>Conecte o número</h2>
+        <ol class="passos-qr">
+          <li>Pegue o celular com o WhatsApp que vai enviar.</li>
+          <li>Abra o WhatsApp e toque em <strong>Configurações</strong>, depois <strong>Dispositivos conectados</strong> e <strong>Conectar dispositivo</strong>.</li>
+          <li>Aponte a câmera para o código ao lado.</li>
+          <li>Pronto. Esta tela muda sozinha quando conectar.</li>
+        </ol>
+      </div>
+    </div>`,
+  );
+}
+
 // ---- Tela de leads: listas ----------------------------------------------------------------------
 function desenharListas() {
   const { listas, negocios } = dados;
@@ -1412,8 +2231,8 @@ function desenharListas() {
     negocios.length === 0
       ? "Os negócios que você buscar aparecem aqui, separados em listas."
       : umaLista
-        ? `${plural(daqui, "lead", "leads")} nesta lista. Clique em um para ler e ajustar a mensagem.`
-        : `${plural(daqui, "lead", "leads")}, em ${plural(listas.length, "lista", "listas")}. Clique em um para ler e ajustar a mensagem.`;
+        ? `${plural(daqui, "lead", "leads")} nesta lista`
+        : `${plural(daqui, "lead", "leads")}, em ${plural(listas.length, "lista", "listas")}`;
 
   por(
     $("menu-lista"),
@@ -1511,7 +2330,7 @@ function detalhe(n) {
     partes.push(`<div class="aviso-linha">Descartado: não recebe mensagem.</div>`);
   } else {
     if (situacao === "falhou") partes.push(`<div class="aviso-linha erro">O envio falhou${n.erro ? `: ${esc(n.erro)}` : ""}.</div>`);
-    partes.push(`<textarea data-n="${n.n}" placeholder="Peça à IA para escrever a mensagem, ou escreva aqui." maxlength="2000">${esc(texto)}</textarea>`);
+    partes.push(`<textarea data-n="${n.n}" placeholder="Peça à IA para escrever a mensagem, ou escreva aqui.">${esc(texto)}</textarea>`);
     partes.push(`<div class="sob-texto"><span>Sem link. Uma mensagem diferente para cada negócio.</span><span class="contador"></span></div>`);
   }
 
@@ -1593,8 +2412,7 @@ function contarLetras() {
   const linha = area.closest(".neg");
   const tamanho = area.value.trim().length;
   const contador = linha.querySelector(".contador");
-  contador.textContent = `${tamanho} de ${dados.tamanhoMax}`;
-  contador.classList.toggle("ruim", tamanho > dados.tamanhoMax || (tamanho > 0 && tamanho < dados.tamanhoMin));
+  contador.textContent = plural(tamanho, "letra", "letras");
 }
 
 // ---- O que a pessoa faz ---------------------------------------------------------------------------
@@ -1683,9 +2501,6 @@ document.addEventListener("click", async (evento) => {
       await mandar("/api/negocio", { n, acao: "enviado" });
       recado("Marquei como enviado. Se você não enviou, abra o negócio e clique em Não enviei.");
       break;
-    case "comecar":
-      await mandar("/api/envio/comecar", { lista: listaEnvio });
-      break;
     case "menu-lista": {
       const menu = $("menu-lista");
       menu.hidden = !menu.hidden;
@@ -1700,24 +2515,84 @@ document.addEventListener("click", async (evento) => {
       marcados.clear();
       desenhar(true);
       break;
-    case "escolher-envio":
-      listaEnvio = alvo.dataset.lista;
-      envioEscolhido = true;
-      lembrar("listaEnvio", listaEnvio);
+    case "novo-envio":
+      comecarNovo();
+      break;
+    case "sair-do-novo":
+      sairDoNovo();
+      break;
+    case "ir-etapa":
+      irParaEtapa(Number(alvo.dataset.etapa));
+      break;
+    case "voltar-etapa":
+      irParaEtapa(novo.etapa - 1);
+      break;
+    case "seguir-etapa":
+      irParaEtapa(novo.etapa + 1);
+      break;
+    case "lista-do-envio":
+      novo.lista = alvo.dataset.lista;
+      novo.modo = null;
       desenharEnvio();
       break;
+    case "tipo":
+      escolherTipo(alvo.dataset.tipo);
+      break;
+    case "ritmo-pronto":
+      $("por-dia").value = alvo.dataset.dia;
+      $("pausa-min").value = alvo.dataset.min;
+      $("pausa-max").value = alvo.dataset.max;
+      $("por-dia").dispatchEvent(new Event("change", { bubbles: true }));
+      break;
+    case "ritmo-passo": {
+      const campo = $(alvo.dataset.campo);
+      const menor = campo.id === "por-dia" ? 1 : 0;
+      campo.value = Math.max(menor, (Number(campo.value) || 0) + Number(alvo.dataset.passo));
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+      break;
+    }
+    case "modo":
+      novo.modo = alvo.dataset.modo;
+      desenharEnvio();
+      if (novo.modo === "mesma") $("unica").focus();
+      break;
+    case "escolher-arquivo":
+      $("arquivo").click();
+      break;
+    case "quando":
+      novo.quando = alvo.dataset.quando;
+      if (novo.quando === "agendar" && !$("quando-dia").value) {
+        // Sugestao: amanha, as 9 da manha.
+        const amanha = new Date(Date.now() + 86400000);
+        $("quando-dia").value = `${amanha.getFullYear()}-${String(amanha.getMonth() + 1).padStart(2, "0")}-${String(amanha.getDate()).padStart(2, "0")}`;
+        $("quando-hora").value = "09:00";
+      }
+      desenharEnvio();
+      break;
+    case "criar-envio":
+      await criarEnvio();
+      break;
+    case "continuar-envio":
+      if (await mandar("/api/envio/comecar", { campanha: alvo.dataset.envio })) recado("O envio começou.");
+      break;
+    case "cancelar-envio":
+      await mandar("/api/envio/cancelar", { campanha: alvo.dataset.envio });
+      break;
+    case "por-nome": {
+      // Poe {nome} onde o cursor esta, ou no fim se a pessoa ainda nao clicou no texto.
+      const area = $("unica");
+      const inicio = area.selectionStart ?? area.value.length;
+      const fim = area.selectionEnd ?? inicio;
+      area.value = `${area.value.slice(0, inicio)}{nome}${area.value.slice(fim)}`;
+      area.focus();
+      area.setSelectionRange(inicio + 6, inicio + 6);
+      area.dispatchEvent(new Event("input", { bubbles: true }));
+      break;
+    }
     case "tirar-termo":
       termos.splice(Number(alvo.dataset.i), 1);
       desenharFichas();
       $("busca-termo").focus();
-      break;
-    case "ideia":
-      juntarTermo(alvo.dataset.termo);
-      $("busca-termo").focus();
-      break;
-    case "destino":
-      destinoDaBusca = alvo.dataset.lista;
-      desenharApoioDaBusca();
       break;
     case "repetir-busca": {
       const feita = buscasFeitas[Number(alvo.dataset.i)];
@@ -1794,20 +2669,14 @@ document.addEventListener("click", async (evento) => {
     case "parar":
       await mandar("/api/envio/parar");
       break;
-    case "janela-numero":
-      janelaNumeroPedida = true;
-      $("janela-numero").showModal();
-      desenharJanelaNumero();
+    case "ir-conexao":
+      location.hash = "conexao";
       break;
     case "ligar":
       await mandar("/api/conexao/ligar");
       break;
     case "sair":
       await mandar("/api/conexao/sair");
-      break;
-    case "fechar-janela":
-      janelaNumeroPedida = false;
-      alvo.closest("dialog").close();
       break;
   }
 });

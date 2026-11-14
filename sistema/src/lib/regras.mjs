@@ -15,9 +15,6 @@ export const INTERVALO_MAXIMO_PADRAO_S = 120;
 /** Falhas seguidas antes de parar: insistir com o WhatsApp recusando piora tudo. */
 export const MAX_FALHAS_SEGUIDAS = 3;
 
-export const TAMANHO_MIN = 40;
-export const TAMANHO_MAX = 600;
-
 /**
  * A oferta de quem prospecta: o que a IA precisa saber para escrever uma mensagem que
  * faca sentido. Sem isso ela inventa, ou presume que a pessoa vende o atendente de IA
@@ -83,8 +80,7 @@ export function enviadosHoje(envios, agora = new Date()) {
 export function validarMensagem(texto) {
   if (typeof texto !== "string" || !texto.trim()) return "está vazia";
   const limpo = texto.trim();
-  if (limpo.length < TAMANHO_MIN) return `está curta demais (menos de ${TAMANHO_MIN} letras)`;
-  if (limpo.length > TAMANHO_MAX) return `está longa demais (mais de ${TAMANHO_MAX} letras)`;
+  // Tamanho nao e conferido: quem decide se a mensagem e curta ou longa e a pessoa.
   if (/\{\{|\}\}|\[[^\]]*\]/.test(limpo)) return "tem um campo sem preencher ({{...}} ou [...])";
   if (/https?:\/\/|www\./i.test(limpo)) {
     return "tem link: primeira mensagem com link, vinda de número desconhecido, parece golpe";

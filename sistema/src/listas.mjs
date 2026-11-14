@@ -32,7 +32,7 @@ function mostrar() {
       .map(([chave, nome]) => [nome.toLowerCase(), dela.filter((n) => n.situacao === chave).length])
       .filter(([, quantos]) => quantos)
       .map(([nome, quantos]) => `${quantos} ${nome}`);
-    console.log(`"${lista.nome}" (id ${lista.id}): ${dela.length} leads${partes.length ? `, ${partes.join(", ")}` : ""}`);
+    console.log(`"${lista.nome}" (id ${lista.id}): ${dela.length} ${dela.length === 1 ? "lead" : "leads"}${partes.length ? `, ${partes.join(", ")}` : ""}`);
     console.log(`  Prontas para sair pelo sistema: ${montarFila(negocios, envios, lista.id).length}`);
   }
   console.log("");

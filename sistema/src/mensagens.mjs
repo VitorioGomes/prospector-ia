@@ -4,10 +4,35 @@
  * A IA escreve dados/mensagens.json, no formato { "12": "texto", "13": "texto" }, em que
  * a chave e o numero do negocio na lista. Este comando confere e aplica. O que nao passar
  * fica no arquivo, para ser corrigido.
+ *
+ * Tambem guarda a mensagem unica, quando a pessoa quer o mesmo texto para a lista toda:
+ *   npm run mensagens -- unica "Nome da lista" "texto, com {nome} onde entra o nome do negocio"
+ *   npm run mensagens -- unica "Nome da lista" "texto" --manter   (nao troca quem ja tem mensagem)
  */
 import { caminhos, falhar, gravarJson, gravarNegocios, lerJson, lerNegocios, lerPerfil } from "./lib/arquivos.mjs";
-import { guardarMensagem } from "./lib/lista.mjs";
+import { aplicarMensagemUnica, guardarMensagem } from "./lib/lista.mjs";
+import { lerTudo } from "./lib/listas.mjs";
 import { faltaNaOferta } from "./lib/regras.mjs";
+
+const pedido = process.argv.slice(2);
+if (pedido[0] === "unica") {
+  // O texto e da pessoa, entao aqui a oferta nao e exigida: nao e a IA escrevendo no chute.
+  const manter = pedido.includes("--manter");
+  const [nome, texto] = pedido.slice(1).filter((p) => p !== "--manter");
+  const { listas } = lerTudo();
+  const quais = listas.map((l) => `"${l.nome}"`).join(", ") || "nenhuma";
+  if (!nome || !texto) {
+    falhar(`Diga a lista e a mensagem:\n  npm run mensagens -- unica "Nome da lista" "texto da mensagem"\nAs listas: ${quais}.`);
+  }
+  const lista = listas.find((l) => l.nome.trim().toLowerCase() === nome.trim().toLowerCase());
+  if (!lista) falhar(`Não achei a lista "${nome}". As listas: ${quais}.`);
+  const { erro, guardadas, mantidas } = aplicarMensagemUnica(lista.id, texto, { soSemMensagem: manter });
+  if (erro) falhar(erro);
+  console.log(`\nMensagem guardada em ${guardadas} ${guardadas === 1 ? "lead" : "leads"} da lista "${lista.nome}".`);
+  if (mantidas) console.log(`Ficaram com a mensagem que já tinham: ${mantidas}.`);
+  console.log("");
+  process.exit(0);
+}
 
 // Mensagem escrita sem saber o que a pessoa vende e chute. Este comando nao guarda nenhuma
 // enquanto a oferta nao estiver preenchida.

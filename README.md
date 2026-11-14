@@ -20,8 +20,10 @@ Ela instala, pergunta o que você vende e faz a primeira busca com você.
 ## O que saber antes
 
 - A busca não pede cadastro nem chave. Na primeira vez, baixa um programa de cerca de 60 MB.
-- Para enviar pelo sistema, use um chip separado, só para isso. Envio em volume pode levar o
-  WhatsApp a bloquear o número.
+- Para enviar pelo sistema, você conecta um número de WhatsApp: o do seu atendimento ou um chip
+  só para isso. Mensagem para quem não conhece o número pode levar o WhatsApp a bloqueá-lo, e um
+  chip separado protege o número principal. Envie aos poucos.
+- O sistema envia texto, imagem, vídeo, áudio e documento, na hora ou agendado.
 - Nada é enviado sem você ler e aprovar.
 - Testado em Windows.
 

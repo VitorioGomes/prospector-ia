@@ -18,11 +18,14 @@ try {
   const argumentos = process.argv.slice(2);
   const posicao = argumentos.indexOf("--lista");
   const nomeDaLista = posicao >= 0 ? argumentos.splice(posicao, 2)[1] : "";
+  const posicaoDoQuantos = argumentos.indexOf("--quantos");
+  const quantos = posicaoDoQuantos >= 0 ? Number(argumentos.splice(posicaoDoQuantos, 2)[1]) || null : null;
   const [cidade, ...termos] = argumentos.filter((a) => !a.startsWith("--"));
-  const r = await buscar({ cidade, termos, nomeDaLista, avisar: (texto) => console.log(`\n${texto}`) });
+  const r = await buscar({ cidade, termos, nomeDaLista, quantos, avisar: (texto) => console.log(`\n${texto}`) });
 
   console.log(`\nBusca em ${r.cidade}: ${r.termos.join(", ")}`);
   console.log(`  Leads novos: ${r.novos} (${r.celulares} com celular)${r.lista ? `, na lista "${r.lista.nome}"` : ""}`);
+  if (r.pedidos && r.novos < r.pedidos) console.log(`  Você pediu ${r.pedidos}: foi o que a busca achou com telefone. Outros termos do mesmo nicho trazem mais.`);
   if (r.repetidos) console.log(`  Já estavam nas suas listas: ${r.repetidos}`);
   if (r.semTelefone) console.log(`  Sem telefone, deixados de fora: ${r.semTelefone}`);
   if (r.deFora) console.log(`  De outras cidades, deixados de fora: ${r.deFora}`);

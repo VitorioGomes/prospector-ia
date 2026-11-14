@@ -10,16 +10,19 @@ import http from "node:http";
 import path from "node:path";
 import { PORTA_DA_TELA, RAIZ, caminhos, gravarJson, lerPerfil } from "./lib/arquivos.mjs";
 import { comecarBusca, situacaoDaBusca } from "./lib/busca.mjs";
-import { comecar, enviarTeste, parar, situacaoDoEnvio } from "./lib/envio.mjs";
+import { TIPOS, cancelarCampanha, guardarArquivo, lerCampanhas } from "./lib/campanhas.mjs";
+import { comecar, criarEnvio, enviarTeste, parar, retomarInterrompidos, situacaoDoEnvio, verAgendados } from "./lib/envio.mjs";
 import { acaoExiste, aplicar, aplicarMensagem, lerEnvios } from "./lib/lista.mjs";
 import { apagarLista, criarLista, lerTudo, moverLeads, renomearLista } from "./lib/listas.mjs";
-import { NOMES_DA_SITUACAO, TAMANHO_MAX, TAMANHO_MIN, enviadosHoje, intervaloMaximoMs, intervaloMs, limiteDoDia, montarFila } from "./lib/regras.mjs";
+import { NOMES_DA_SITUACAO, enviadosHoje, intervaloMaximoMs, intervaloMs, limiteDoDia, montarFila } from "./lib/regras.mjs";
 import { ligar, sair, sessaoExiste, situacaoDaConexao, soltar } from "./lib/whatsapp.mjs";
 
 const PAGINA = path.join(RAIZ, "tela", "index.html");
 const FONTE = path.join(RAIZ, "tela", "fonte.woff2");
 const ENDERECOS = [`localhost:${PORTA_DA_TELA}`, `127.0.0.1:${PORTA_DA_TELA}`];
 const MAX_CORPO = 100_000;
+/** O maior arquivo que um envio leva (documento). O limite de cada tipo esta em campanhas.mjs. */
+const MAX_ARQUIVO = Math.max(...Object.values(TIPOS).map((t) => t.maximoMb ?? 0)) * 1024 * 1024;
 
 function estadoCompleto() {
   const { listas, negocios } = lerTudo();
@@ -33,6 +36,10 @@ function estadoCompleto() {
     nomes: NOMES_DA_SITUACAO,
     conexao: situacaoDaConexao(),
     envio: situacaoDoEnvio(),
+    /** Os envios guardados, do mais novo para o mais antigo. */
+    campanhas: lerCampanhas().reverse().slice(0, 200),
+    /** O que cada tipo de mensagem aceita, para a tela avisar antes de mandar o arquivo. */
+    tipos: Object.fromEntries(Object.entries(TIPOS).map(([chave, t]) => [chave, { nome: t.nome, maximoMb: t.maximoMb ?? 0, extensoes: t.extensoes ? Object.keys(t.extensoes) : null }])),
     limitePorDia: limiteDoDia(perfil),
     intervaloSegundos: Math.round(intervaloMs(perfil) / 1000),
     intervaloMaximoSegundos: Math.round(intervaloMaximoMs(perfil) / 1000),
@@ -40,8 +47,6 @@ function estadoCompleto() {
     cidadeDoPerfil: perfil?.cidade ?? "",
     enviadasHoje: enviadosHoje(envios.filter((e) => !e.porMao)),
     naFila: montarFila(negocios, envios).length,
-    tamanhoMin: TAMANHO_MIN,
-    tamanhoMax: TAMANHO_MAX,
   };
 }
 
@@ -60,6 +65,23 @@ function lerCorpo(pedido) {
         rejeitar(new Error("formato"));
       }
     });
+    pedido.on("error", rejeitar);
+  });
+}
+
+/** Le o arquivo enviado pela tela. Devolve null se passar do maior tamanho aceito. */
+function lerArquivoEnviado(pedido) {
+  return new Promise((resolver, rejeitar) => {
+    const partes = [];
+    let tamanho = 0;
+    let estourou = false;
+    pedido.on("data", (parte) => {
+      tamanho += parte.length;
+      if (tamanho > MAX_ARQUIVO) estourou = true;
+      else partes.push(parte);
+    });
+    // Mesmo grande demais, le ate o fim: assim a tela recebe a resposta, e nao uma queda.
+    pedido.on("end", () => resolver(estourou ? null : Buffer.concat(partes)));
     pedido.on("error", rejeitar);
   });
 }
@@ -104,10 +126,10 @@ const acoes = {
     });
     return null;
   },
-  "/api/busca": ({ cidade, termos, listaId, nomeDaLista }) => {
+  "/api/busca": ({ cidade, termos, listaId, nomeDaLista, quantos }) => {
     if (typeof cidade !== "string" || !Array.isArray(termos)) return "Diga a cidade e o que buscar.";
     if (!cidade.trim() || !termos.some((t) => String(t).trim())) return "Diga a cidade, com o estado, e o que buscar.";
-    return comecarBusca({ cidade, termos, listaId, nomeDaLista });
+    return comecarBusca({ cidade, termos, listaId, nomeDaLista, quantos: Number(quantos) || null });
   },
   "/api/lista/criar": ({ nome }) => {
     const { erro, lista } = criarLista(nome);
@@ -125,10 +147,24 @@ const acoes = {
     for (const n of ns) if (!aplicar(n, acao)) feitos += 1;
     return { feitos };
   },
-  "/api/envio/comecar": ({ lista }) => comecar(lista),
+  // Com "unica", a pessoa escolheu a mesma mensagem para todos: o texto entra nos leads da
+  // lista e o envio comeca. Com o envio rodando, a fila nao muda de texto no meio.
+  // Envio novo, vindo das etapas da tela: { lista, modo, tipo, texto, arquivo, comecaEm }.
+  "/api/envio/criar": (pedido) => {
+    const { erro, campanha } = criarEnvio(pedido);
+    return erro ?? { campanha };
+  },
+  // { campanha }: continua um envio guardado. { lista }: e o comando "npm run enviar", que
+  // manda as mensagens prontas da lista, uma para cada lead.
+  "/api/envio/comecar": ({ campanha, lista }) => {
+    if (campanha) return comecar(campanha);
+    const { erro, campanha: nova } = criarEnvio({ lista, modo: "cada", tipo: "texto" });
+    return erro ?? { campanha: nova };
+  },
+  "/api/envio/cancelar": ({ campanha }) => cancelarCampanha(campanha),
   "/api/envio/parar": () => void parar(),
-  "/api/envio/teste": async ({ numero, lista }) => {
-    const { erro, negocio } = await enviarTeste(numero, lista);
+  "/api/envio/teste": async ({ numero, ...pedido }) => {
+    const { erro, negocio } = await enviarTeste(numero, pedido);
     return erro ?? { negocio };
   },
   "/api/fechar": () => {
@@ -166,6 +202,25 @@ const servidor = http.createServer(async (pedido, resposta) => {
       responder(resposta, 200, estadoCompleto());
       return;
     }
+    // O arquivo de um envio (imagem, video, audio, documento) chega cru, nao em JSON.
+    if (pedido.method === "POST" && caminho === "/api/arquivo") {
+      const origem = pedido.headers.origin;
+      const ehArquivo = (pedido.headers["content-type"] ?? "").includes("application/octet-stream");
+      if (!ehArquivo || (origem && !ENDERECOS.includes(origem.replace(/^http:\/\//, "")))) {
+        responder(resposta, 403, { erro: "Pedido não aceito." });
+        return;
+      }
+      const dados = new URL(pedido.url, "http://localhost").searchParams;
+      const conteudo = await lerArquivoEnviado(pedido);
+      if (conteudo === null) {
+        responder(resposta, 400, { erro: "O arquivo é grande demais para enviar pelo WhatsApp." });
+        return;
+      }
+      const { erro, arquivo } = guardarArquivo(dados.get("tipo"), dados.get("nome"), conteudo);
+      if (erro) responder(resposta, 400, { erro });
+      else responder(resposta, 200, { ok: true, arquivo });
+      return;
+    }
     if (pedido.method === "POST" && Object.hasOwn(acoes, caminho)) {
       const origem = pedido.headers.origin;
       const ehJson = (pedido.headers["content-type"] ?? "").includes("application/json");
@@ -194,4 +249,13 @@ servidor.listen(PORTA_DA_TELA, "127.0.0.1", () => {
   console.log(new Date().toISOString(), `Tela aberta em http://localhost:${PORTA_DA_TELA}`);
   // Numero ja conectado antes: religa sozinho, sem pedir QR Code.
   if (sessaoExiste()) ligar();
+  retomarInterrompidos();
+  // Os envios agendados comecam por aqui, quando a hora chega.
+  setInterval(() => {
+    try {
+      verAgendados();
+    } catch (erro) {
+      console.error(new Date().toISOString(), "agendados", erro);
+    }
+  }, 20_000);
 });

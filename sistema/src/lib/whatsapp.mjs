@@ -1,9 +1,9 @@
 /**
  * Conexao com o WhatsApp para a prospeccao, pelo Baileys.
  *
- * E uma conexao propria, em pasta propria (dados/whatsapp), de proposito: a prospeccao sai
- * de um chip so dela. Se saisse do chip do atendimento, um banimento derrubaria o numero
- * em que o negocio atende os clientes.
+ * E uma conexao propria, em pasta propria (dados/whatsapp). O numero e escolha da pessoa:
+ * pode ser um chip so para prospectar, que protege o numero principal de um bloqueio, ou o
+ * mesmo numero do atendimento, ligado aqui como mais um aparelho conectado.
  *
  * Quem usa e a tela (src/servidor.mjs), que fica aberta: por isso a conexao e uma so, de
  * vida longa, e se religa sozinha quando cai.
@@ -18,6 +18,19 @@ import { caminhos } from "./arquivos.mjs";
 import { variantes } from "./telefone.mjs";
 
 const MAX_TENTATIVAS = 5;
+
+// A biblioteca de criptografia que o Baileys usa (libsignal) escreve no console a sessao
+// inteira, com as chaves, a cada troca de sessao. Isso iria parar em dados/tela.log, que a
+// pessoa pode mandar para o suporte. Nada disso e registrado.
+const DA_LIBSIGNAL =
+  /^(Closing session|Opening session|Removing old closed session|Migrating session|Session already|Closing open session|Decrypted message with closed session|Failed to decrypt message with any known session|Session error|V1 session storage migration error)/;
+for (const nivel of ["info", "warn", "error"]) {
+  const original = console[nivel].bind(console);
+  console[nivel] = (...partes) => {
+    if (typeof partes[0] === "string" && DA_LIBSIGNAL.test(partes[0])) return;
+    original(...partes);
+  };
+}
 
 /**
  * fase: "desligado" | "ligando" | "qr" | "conectado"

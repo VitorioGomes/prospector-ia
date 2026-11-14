@@ -13,7 +13,7 @@ Funciona igual no Claude Code, no Gemini CLI e no Codex.
 2. Uma **mensagem de abordagem para cada um**, escrita por você, uma diferente da outra, a partir
    do que a pessoa vende.
 3. O **envio**, do jeito que ela preferir: ela mesma, um por um, ou o sistema, sozinho, devagar,
-   por um chip separado.
+   pelo número de WhatsApp que ela conectar.
 
 **Você não escreve o sistema.** Ele está pronto na pasta `sistema/`. Você conversa, roda os
 comandos e escreve as mensagens.
@@ -136,6 +136,17 @@ descreveria o próprio negócio no Maps (para estética: "clínica de estética"
 npm run buscar -- "Sobral, CE" "clínica de estética" --lista "Estética de Sobral"
 ```
 
+**Se ela disser quantos leads quer**, passe a quantidade (até 200):
+
+```
+npm run buscar -- "Fortaleza, CE" "pet shop" --quantos 100
+```
+
+Com `--quantos`, a busca se repete em vários pontos da cidade até chegar ao número pedido, e fica
+só com essa quantidade. Em cidade pequena pode vir menos do que o pedido: é o que o Maps tem com
+telefone para aquele termo. Aí, outros jeitos de dizer o nicho trazem mais. Sem `--quantos`, vem
+o que a primeira passada achar (até 20 por termo).
+
 As listas existem para a pessoa decidir para quem enviar: o envio sai para uma lista de cada vez.
 Quem já está em qualquer lista não entra de novo.
 
@@ -225,6 +236,26 @@ achar um detalhe verdadeiro. Se não abrir, use só o que está na lista.
 Antes de escrever para todos, **mostre três mensagens** à pessoa e pergunte se é esse o tom.
 Ajuste e só então escreva o resto.
 
+### Quando a pessoa quer a mesma mensagem para todos
+
+Tem quem prefira o disparo comum: um texto só, que ela mesma escreve, para a lista inteira. Na
+tela isso fica em **Envio**, no passo 2, na opção "A mesma para todos": ela escreve, e o texto entra
+nos leads quando ela clica em enviar. Pela conversa, é este comando:
+
+```
+npm run mensagens -- unica "Nome da lista" "Olá, {nome}! Aqui vai o texto que ela escreveu."
+```
+
+- Onde estiver `{nome}`, entra o nome de cada negócio. É o único campo que existe.
+- Entra em todos os leads da lista que ainda não receberam. Para **não trocar** a mensagem de quem
+  já tem uma, acrescente `--manter` no fim.
+- **O texto é dela.** Use como ela escreveu; se pedir ajuda, sugira, mas não mande sem ela ler.
+  Aqui a oferta do Passo 1 não é exigida.
+- Não há tamanho mínimo nem máximo. A única regra que vale é: sem link.
+- Diga uma vez, sem insistir: texto igual para muita gente é o que o WhatsApp mais reconhece como
+  disparo. Uma mensagem por negócio (acima) responde mais e arrisca menos o número. A escolha é
+  dela.
+
 ---
 
 ## Passo 4 — A pessoa aprova
@@ -266,14 +297,19 @@ npm run marcar -- enviado 1 2 5
 
 **Antes de conectar, diga estas duas coisas, uma vez cada:**
 
-- **Use um chip separado, só para prospectar.** Nem o pessoal, nem o do atendimento.
-- **As respostas chegam no celular desse chip, e quem responde é ela.** O sistema só manda a
-  primeira mensagem, e nunca duas vezes para o mesmo número.
+- **Qual número usar é escolha dela:** o número em que ela já atende, ou um chip só para
+  prospectar. Com o mesmo número, as respostas caem onde ela já atende. Com um chip separado, um
+  bloqueio do WhatsApp não derruba o número principal: mensagem para quem não conhece o número é
+  o que mais gera bloqueio. Diga isso em uma frase e siga o que ela escolher.
+- **As respostas chegam no celular desse número, e quem responde é ela** (ou o atendente dela, se
+  for o mesmo número). O sistema só manda a primeira mensagem, e nunca duas vezes para o mesmo
+  número.
 
 Depois, um passo de cada vez:
 
-1. **Conectar:** `npm run conectar`. Abre a tela no navegador com o QR Code e espera a leitura. No
-   celular do chip: WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho. Só
+1. **Conectar:** `npm run conectar`. Abre a tela no navegador, na parte Conexão, com o QR Code, e
+   espera a leitura. No celular do número: WhatsApp → Configurações → Dispositivos conectados →
+   Conectar dispositivo. Só
    precisa ser feito uma vez: o número continua conectado nos dias seguintes. **Este é o único
    passo que depende da tela.**
 2. **O ritmo.** Pergunte, uma de cada vez: quantas mensagens por dia (padrão 20) e qual a pausa
@@ -283,7 +319,7 @@ Depois, um passo de cada vez:
    `prospeccao/perfil.json`. A escolha é dela: não há teto nem horário proibido, e ela envia no
    dia e na hora que quiser. Se ela pedir sua opinião, diga em uma frase que número novo mandando
    muito e rápido para quem não conhece é o que o WhatsApp mais bloqueia, e respeite o que ela
-   decidir. **Num chip novo, recomende 5 no primeiro dia.**
+   decidir. **Num número novo, recomende 5 no primeiro dia.**
 3. **Provar antes:** peça o número pessoal dela e rode
    `npm run enviar -- teste 88999990000 "Nome da lista"`. A primeira mensagem da lista chega no
    celular dela, do jeito que o negócio vai receber. Nada é registrado.
@@ -302,8 +338,19 @@ O envio continua com o terminal e o navegador fechados, mas **o computador preci
 (20 mensagens com pausa de 60 a 120 segundos levam cerca de meia hora). Se o computador desligar
 no meio, nada se perde: o que já saiu está registrado, e o resto continua na fila.
 
-Se ela preferir, tudo isto também está na parte Envio da tela: conectar, ritmo, teste, escolher a
-lista e enviar.
+Se ela preferir, tudo isto também está na tela. Em **Conexão**, o número. Em **Envio**, o botão
+"Novo envio" abre quatro etapas, uma de cada vez: a lista, a mensagem, o ritmo e a conferência,
+com o teste. O histórico de cada envio fica na mesma tela, um por linha.
+
+**Duas coisas só existem na tela**, por enquanto:
+
+- **Imagem, vídeo, áudio e documento.** Na etapa da mensagem ela escolhe o tipo e o arquivo. O
+  texto vira a legenda. Áudio vai sempre igual para todos.
+- **Agendar.** Na última etapa ela escolhe "Agendar", o dia e a hora. O computador precisa estar
+  ligado nessa hora, e a tela, ligada (`npm run tela`).
+
+Se ela pedir uma dessas duas, abra a tela (`npm run tela`) e diga onde clicar. Pelos comandos, o
+envio é de texto e começa na hora.
 
 ---
 

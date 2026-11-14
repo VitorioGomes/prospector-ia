@@ -14,7 +14,16 @@ import {
   validarMensagem,
 } from "../src/lib/regras.mjs";
 import { escolherNovos } from "../src/lib/busca.mjs";
-import { desfazerEnvioPorMao, descartar, guardarMensagem, marcarEnviadoPorMao, tentarDeNovo, voltar } from "../src/lib/lista.mjs";
+import {
+  desfazerEnvioPorMao,
+  descartar,
+  guardarMensagem,
+  marcarEnviadoPorMao,
+  tentarDeNovo,
+  usarMensagemUnica,
+  voltar,
+} from "../src/lib/lista.mjs";
+import { conferirPedido, filaDaCampanha, textoPara } from "../src/lib/campanhas.mjs";
 import { arrumar, nomeAutomatico, problemaDoNome } from "../src/lib/listas.mjs";
 import { ehCelular, exibir, normalizar, variantes } from "../src/lib/telefone.mjs";
 
@@ -84,11 +93,11 @@ test("enviados hoje: conta so o dia de hoje", () => {
   assert.equal(enviadosHoje(envios, agora), 2);
 });
 
-test("mensagem: recusa vazia, curta, longa, com campo aberto e com link", () => {
+test("mensagem: recusa vazia, com campo aberto e com link, e nao olha o tamanho", () => {
   assert.equal(validarMensagem(mensagemBoa), null);
   assert.match(validarMensagem(""), /vazia/);
-  assert.match(validarMensagem("Oi, tudo bem?"), /curta/);
-  assert.match(validarMensagem("a".repeat(601)), /longa/);
+  assert.equal(validarMensagem("Oi, tudo bem?"), null);
+  assert.equal(validarMensagem("a".repeat(5000)), null);
   assert.match(validarMensagem(`${mensagemBoa} {{nome}}`), /sem preencher/);
   assert.match(validarMensagem(`${mensagemBoa} [nome do dono]`), /sem preencher/);
   assert.match(validarMensagem(`${mensagemBoa} Veja em https://exemplo.com`), /link/);
@@ -169,7 +178,7 @@ test("lista: guardar mensagem confere, recusa repetida e deixa pronto", () => {
   // Guardar de novo o mesmo texto no mesmo negocio nao e repeticao.
   assert.equal(guardarMensagem(negocios, a, mensagemBoa), null);
 
-  assert.match(guardarMensagem(negocios, a, "Oi"), /curta/);
+  assert.match(guardarMensagem(negocios, a, "   "), /vazia/);
   assert.match(guardarMensagem(negocios, semTelefone, mensagemBoa), /telefone/);
   assert.match(guardarMensagem(negocios, enviado, mensagemBoa), /já recebeu/);
 });
@@ -250,4 +259,92 @@ test("oferta: os quatro primeiros campos sao obrigatorios, e espaco nao conta", 
     faltaNaOferta({ seuNome: "Ana", oQueVoceVende: "curso", paraQuem: "confeiteiras", problemaQueResolve: "cobrar pouco" }),
     [],
   );
+});
+
+const listaDeTeste = () => [
+  { n: 1, nome: "Studio Bela", telefone: "5588999990001", situacao: "novo", lista: "a" },
+  { n: 2, nome: "Clínica Vida", telefone: "5588999990002", situacao: "pronto", mensagem: "Mensagem própria, escrita só para a Clínica Vida, com mais de quarenta letras.", lista: "a" },
+  { n: 3, nome: "Espaço Zen", telefone: "5588999990003", situacao: "enviado", mensagem: "Já foi.", lista: "a" },
+  { n: 4, nome: "Sem Fone", telefone: null, situacao: "sem_telefone", lista: "a" },
+  { n: 5, nome: "Tirado", telefone: "5588999990005", situacao: "descartado", lista: "a" },
+  { n: 6, nome: "Falhou Antes", telefone: "5588999990006", situacao: "falhou", erro: "queda", lista: "a" },
+  { n: 7, nome: "De Outra Lista", telefone: "5588999990007", situacao: "novo", lista: "b" },
+];
+const unica = "Olá, {nome}! Estou falando com os negócios da cidade sobre uma novidade. Posso te contar?";
+
+test("mensagem unica: entra em quem ainda pode receber, so na lista escolhida, com o nome no lugar", () => {
+  const negocios = listaDeTeste();
+  assert.deepEqual(usarMensagemUnica(negocios, "a", unica), { guardadas: 3, mantidas: 0 });
+  assert.equal(negocios[0].mensagem, "Olá, Studio Bela! Estou falando com os negócios da cidade sobre uma novidade. Posso te contar?");
+  assert.equal(negocios[0].situacao, "pronto");
+  assert.match(negocios[1].mensagem, /^Olá, Clínica Vida!/);
+  assert.equal(negocios[2].mensagem, "Já foi.");
+  assert.equal(negocios[3].mensagem, undefined);
+  assert.equal(negocios[4].mensagem, undefined);
+  assert.equal(negocios[5].situacao, "pronto");
+  assert.equal(negocios[5].erro, undefined);
+  assert.equal(negocios[6].mensagem, undefined);
+  // O texto repetido, que a mensagem por lead recusa, aqui e o pedido: a fila aceita todos.
+  assert.equal(montarFila(negocios, [], "a").length, 3);
+});
+
+test("mensagem unica: da para manter quem ja tem mensagem propria", () => {
+  const negocios = listaDeTeste();
+  assert.deepEqual(usarMensagemUnica(negocios, "a", unica, { soSemMensagem: true }), { guardadas: 2, mantidas: 1 });
+  assert.match(negocios[1].mensagem, /^Mensagem própria/);
+});
+
+test("mensagem unica: recusa o que nao da para enviar, sem mexer em nada", () => {
+  const negocios = listaDeTeste();
+  assert.match(usarMensagemUnica(negocios, "a", "   ").erro, /Escreva/);
+  assert.match(usarMensagemUnica(negocios, "a", `${unica} Você fica em {cidade}?`).erro, /\{nome\}/);
+  assert.match(usarMensagemUnica(negocios, "a", `${unica} Veja em https://exemplo.com`).erro, /link/);
+  assert.match(usarMensagemUnica(negocios, "nao-existe", unica).erro, /nenhum lead/);
+  assert.equal(negocios[0].mensagem, undefined);
+  assert.equal(negocios[0].situacao, "novo");
+});
+
+const listasDeTeste = [{ id: "a", nome: "Lista A" }, { id: "b", nome: "Lista B" }];
+
+test("envio: a mesma para todos pega quem ainda pode receber, e quem falhou neste envio nao volta", () => {
+  const negocios = listaDeTeste();
+  const campanha = { id: "c1", lista: { id: "a" }, modo: "mesma", tipo: "texto", texto: unica };
+  assert.deepEqual(filaDaCampanha(negocios, [], campanha).map((n) => n.n), [1, 2, 6]);
+  // O 6 falhou por outro motivo, antes. Se falhar neste envio, sai da fila.
+  negocios[5].campanha = "c1";
+  assert.deepEqual(filaDaCampanha(negocios, [], campanha).map((n) => n.n), [1, 2]);
+  // Quem ja recebeu por outra lista nao recebe de novo.
+  assert.deepEqual(filaDaCampanha(negocios, [{ telefone: "5588999990001" }], campanha).map((n) => n.n), [2]);
+  assert.equal(textoPara(campanha, negocios[0]), "Olá, Studio Bela! Estou falando com os negócios da cidade sobre uma novidade. Posso te contar?");
+});
+
+test("envio: uma para cada lead usa a mensagem que esta no lead", () => {
+  const negocios = listaDeTeste();
+  const campanha = { id: "c2", lista: { id: "a" }, modo: "cada", tipo: "texto", texto: null };
+  assert.deepEqual(filaDaCampanha(negocios, [], campanha).map((n) => n.n), [2]);
+  assert.match(textoPara(campanha, negocios[1]), /^Mensagem própria/);
+});
+
+test("envio: o pedido e conferido antes de guardar", () => {
+  const negocios = listaDeTeste();
+  const confere = (pedido, agora) => conferirPedido(pedido, listasDeTeste, negocios, [], agora);
+  assert.match(confere({ lista: "nao-existe" }).erro, /qual lista/);
+  assert.match(confere({ lista: "a", tipo: "holograma" }).erro, /tipo/);
+  assert.match(confere({ lista: "a", modo: "mesma", tipo: "texto", texto: "  " }).erro, /Escreva/);
+  assert.equal(confere({ lista: "a", modo: "mesma", tipo: "texto", texto: "Oi, {nome}" }).erro, undefined);
+  assert.match(confere({ lista: "a", modo: "mesma", tipo: "imagem", texto: "Legenda" }).erro, /imagem/);
+
+  const bom = confere({ lista: "a", modo: "mesma", tipo: "texto", texto: unica });
+  assert.equal(bom.erro, undefined);
+  assert.deepEqual(bom.pedido.lista, { id: "a", nome: "Lista A" });
+  assert.equal(bom.fila.length, 3);
+  assert.equal(bom.pedido.comecaEm, null);
+
+  // Sem dizer o modo, e o do comando "npm run enviar": uma para cada lead.
+  assert.equal(confere({ lista: "a" }).pedido.modo, "cada");
+
+  const agora = new Date("2026-11-14T12:00:00Z");
+  assert.match(confere({ lista: "a", comecaEm: "2026-11-14T11:00:00Z" }, agora).erro, /já passou/);
+  assert.match(confere({ lista: "a", comecaEm: "amanhã cedo" }, agora).erro, /dia e a hora/);
+  assert.equal(confere({ lista: "a", comecaEm: "2026-11-15T12:00:00Z" }, agora).pedido.comecaEm, "2026-11-15T12:00:00.000Z");
 });

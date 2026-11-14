@@ -15,6 +15,30 @@ import { ErroDaBusca, buscarRapido, centroDosLugares, ficaNaCidade, garantirProg
 import { ehCelular, normalizar } from "./telefone.mjs";
 
 export const MAX_TERMOS = 8;
+/** O maximo que se pode pedir numa busca. Acima disso sao buscas demais em seguida no Maps. */
+export const QUANTOS_MAX = 200;
+
+/**
+ * Pontos em volta do centro da cidade, em km (para o norte, para o leste), do mais perto
+ * para o mais longe. Cada busca traz ate 20 negocios por termo: para trazer mais, a busca
+ * se repete ponto a ponto. Medido em 14/11/2026 (barbearia, Fortaleza): com a cidade no
+ * texto da busca, o Maps devolve os mesmos 20 em qualquer ponto; so com o termo puro e o
+ * mapa bem de perto cada ponto traz negocios novos (17 a 20 por ponto).
+ */
+const EM_VOLTA = [
+  [0, 0],
+  [2.5, 0], [0, 2.5], [-2.5, 0], [0, -2.5],
+  [3, 3], [-3, 3], [-3, -3], [3, -3],
+  [5, 0], [0, 5], [-5, 0], [0, -5],
+  [5.5, 5.5], [-5.5, 5.5], [-5.5, -5.5], [5.5, -5.5],
+  [8, 0], [0, 8], [-8, 0], [0, -8],
+];
+/** Cidade pequena acaba logo: depois de tantos pontos sem nada novo, a busca para. */
+const PONTOS_VAZIOS_PARA_PARAR = 3;
+const deslocar = ({ lat, lon }, [norteKm, lesteKm]) => ({
+  lat: lat + norteKm / 111,
+  lon: lon + lesteKm / (111 * Math.cos((lat * Math.PI) / 180)),
+});
 
 function paraNegocio(lugar, busca) {
   const telefone = normalizar(lugar.phone);
@@ -78,7 +102,7 @@ export function escolherNovos(lugares, negocios, cidade, busca) {
  * Os novos entram numa lista: a de id listaId, ou a de nome nomeDaLista (criada se nao
  * existir). Sem nenhum dos dois, o nome vem da propria busca.
  */
-export async function buscar({ cidade, termos, listaId = null, nomeDaLista = "", avisar = () => {} }) {
+export async function buscar({ cidade, termos, listaId = null, nomeDaLista = "", quantos = null, avisar = () => {} }) {
   cidade = String(cidade ?? "").trim();
   termos = (termos ?? []).map((t) => String(t).trim()).filter(Boolean);
   if (!cidade || termos.length === 0) {
@@ -102,6 +126,26 @@ export async function buscar({ cidade, termos, listaId = null, nomeDaLista = "",
   const dePerto = await buscarRapido(programa, { consultas, ...centro, raioM: 10_000, zoom: 13 });
 
   const encontrados = [...dePerto, ...daRegiao];
+
+  // 3. A pessoa pediu uma quantidade e ainda falta: busca em volta do centro, ponto a ponto,
+  //    ate chegar la ou acabarem os pontos.
+  const pedidos = Number.isInteger(quantos) && quantos > 0 ? Math.min(quantos, QUANTOS_MAX) : null;
+  if (pedidos) {
+    const jaTenho = lerTudo().negocios;
+    const contar = () => escolherNovos(encontrados, jaTenho, cidade, null).novos.length;
+    let tenho = contar();
+    let vazios = 0;
+    for (const ponto of EM_VOLTA) {
+      if (tenho >= pedidos || vazios >= PONTOS_VAZIOS_PARA_PARAR) break;
+      avisar(`Buscando mais em volta: ${tenho} de ${pedidos}...`);
+      // Termo puro, sem a cidade: quem decide o lugar e o ponto no mapa. O que cair fora da
+      // cidade sai depois, pelo endereco.
+      encontrados.push(...(await buscarRapido(programa, { consultas: termos, ...deslocar(centro, ponto), raioM: 3_000, zoom: 15 })));
+      const agora = contar();
+      vazios = agora > tenho ? 0 : vazios + 1;
+      tenho = agora;
+    }
+  }
   if (encontrados.length === 0) {
     throw new ErroDaBusca(
       "A busca não trouxe nenhum negócio. Tente outro jeito de dizer o nicho, ou confira o nome da cidade.\n" +
@@ -112,7 +156,10 @@ export async function buscar({ cidade, termos, listaId = null, nomeDaLista = "",
   // Os leads sao lidos so agora: a busca leva segundos, e eles podem ter mudado nesse tempo.
   const { listas, negocios } = lerTudo();
   const busca = { termo: termos.join(", "), cidade, em: new Date().toISOString() };
-  const { novos, repetidos, deFora, semTelefone } = escolherNovos(encontrados, negocios, cidade, busca);
+  const escolhidos = escolherNovos(encontrados, negocios, cidade, busca);
+  const { repetidos, deFora, semTelefone } = escolhidos;
+  // Vieram mais do que o pedido: ficam os primeiros. Os outros aparecem numa proxima busca.
+  const novos = pedidos ? escolhidos.novos.slice(0, pedidos) : escolhidos.novos;
 
   // A lista so e criada se tem quem por nela.
   let lista = listaId ? listas.find((l) => l.id === listaId) : null;
@@ -129,6 +176,7 @@ export async function buscar({ cidade, termos, listaId = null, nomeDaLista = "",
     cidade,
     termos,
     lista: lista ? { id: lista.id, nome: lista.nome } : null,
+    pedidos,
     novos: novos.length,
     celulares: novos.filter((n) => n.celular).length,
     repetidos,
@@ -146,10 +194,10 @@ export function situacaoDaBusca() {
 }
 
 /** Comeca a busca e volta na hora. Devolve o motivo de nao ter comecado, ou null. */
-export function comecarBusca({ cidade, termos, listaId, nomeDaLista }) {
+export function comecarBusca({ cidade, termos, listaId, nomeDaLista, quantos }) {
   if (estado.rodando) return "Já tem uma busca rodando. Espere ela terminar.";
   Object.assign(estado, { rodando: true, etapa: "Começando...", resultado: null, erro: null });
-  buscar({ cidade, termos, listaId, nomeDaLista, avisar: (texto) => (estado.etapa = texto) })
+  buscar({ cidade, termos, listaId, nomeDaLista, quantos, avisar: (texto) => (estado.etapa = texto) })
     .then((resultado) => (estado.resultado = resultado))
     .catch((falha) => {
       estado.erro = falha instanceof ErroDaBusca ? falha.message : "A busca deu um erro que eu não esperava. Tente de novo.";
